@@ -11,11 +11,14 @@ export class GraphEngine {
     this.h = canvas.height
   }
 
-  draw(recorder: DataRecorder, xKey: SeriesKey, yKey: SeriesKey): void {
+  /** flipY negates every Y value before drawing — lets you switch between
+   *  physical convention (↑+, default) and canvas convention (↓+). */
+  draw(recorder: DataRecorder, xKey: SeriesKey, yKey: SeriesKey, flipY = false): void {
     const ctx = this.ctx
     if (!ctx) return                     // guard: null in test environments
     const xs = recorder.getSeries(xKey)
-    const ys = recorder.getSeries(yKey)
+    const raw = recorder.getSeries(yKey)
+    const ys = flipY ? raw.map(v => -v) : raw
     if (xs.length < 2) return
 
     ctx.clearRect(0, 0, this.w, this.h)

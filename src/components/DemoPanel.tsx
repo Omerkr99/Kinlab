@@ -132,7 +132,7 @@ export function DemoPanel() {
         world.step(dt)
         const b = ballRef.current
         if (b) {
-          recorder.record(world.time, b.x, b.y, b.vx, b.vy, b.ax, b.ay)
+          recorder.record(world.time, b.x, FLOOR_Y - b.y, b.vx, -b.vy, b.ax, -b.ay)
           setBallPos({ x: Math.round(b.x), y: Math.round(b.y) })
         }
         setFrameCount(f => f + 1)

@@ -18,6 +18,7 @@ const interaction = new InteractionLayer()
 export default function App() {
   const [xKey, setXKey] = useState<SeriesKey>('time')
   const [yKey, setYKey] = useState<SeriesKey>('y')   // default: time vs y (most informative)
+  const [flipY, setFlipY] = useState(false)           // false = physical ↑+ convention (default)
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', background: '#f5f6f8', minHeight: '100vh', padding: 24 }}>
@@ -51,8 +52,8 @@ export default function App() {
           <div style={{ marginBottom: 6, fontSize: 12, color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
             Data Graph
           </div>
-          <AxisSelector xKey={xKey} yKey={yKey} onXChange={setXKey} onYChange={setYKey} />
-          <GraphCanvas recorder={recorder} xKey={xKey} yKey={yKey} />
+          <AxisSelector xKey={xKey} yKey={yKey} flipY={flipY} onXChange={setXKey} onYChange={setYKey} onFlipY={setFlipY} />
+          <GraphCanvas recorder={recorder} xKey={xKey} yKey={yKey} flipY={flipY} />
           <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
             Updates live · Change axes to explore: x, y, vx, vy, ax, ay
           </div>

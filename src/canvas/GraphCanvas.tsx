@@ -6,9 +6,10 @@ interface Props {
   recorder: DataRecorder
   xKey: SeriesKey
   yKey: SeriesKey
+  flipY?: boolean   // negate Y series for display (canvas ↓+ convention)
 }
 
-export function GraphCanvas({ recorder, xKey, yKey }: Props) {
+export function GraphCanvas({ recorder, xKey, yKey, flipY = false }: Props) {
   const canvasRef   = useRef<HTMLCanvasElement>(null)
   const engineRef   = useRef<GraphEngine | null>(null)
   const lastLenRef  = useRef<number>(-1)   // KAN-36: dirty flag — skip redraw when no new data
@@ -19,18 +20,18 @@ export function GraphCanvas({ recorder, xKey, yKey }: Props) {
     lastLenRef.current = -1  // force redraw on mount
   }, [])
 
-  // reset dirty flag when axes change so graph redraws immediately
-  useEffect(() => { lastLenRef.current = -1 }, [xKey, yKey])
+  // reset dirty flag when axes or flip direction change so graph redraws immediately
+  useEffect(() => { lastLenRef.current = -1 }, [xKey, yKey, flipY])
 
   useEffect(() => {
     const id = setInterval(() => {
       const currentLen = recorder.getLength()
       if (currentLen === lastLenRef.current) return  // no new data — skip
       lastLenRef.current = currentLen
-      engineRef.current?.draw(recorder, xKey, yKey)
+      engineRef.current?.draw(recorder, xKey, yKey, flipY)
     }, 32)
     return () => clearInterval(id)
-  }, [recorder, xKey, yKey])
+  }, [recorder, xKey, yKey, flipY])
 
   return (
     <canvas

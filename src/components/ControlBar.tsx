@@ -1,6 +1,7 @@
 import { World } from '../engine'
 import { DataRecorder } from '../recorder'
 import { InteractionLayer } from '../engine'
+import { FLOOR_Y } from '../constants'
 
 interface Props {
   world: World
@@ -32,9 +33,9 @@ export function ControlBar({ world, recorder, interaction }: Props) {
     resetBall(world)          // KAN-33: reset ball position before recording
     recorder.reset()
     recorder.start()
-    // Record t=0 initial state so graphs always start from the launch point
+    // Record t=0 in physical coords: floor=0, upward=positive
     const b0 = world.bodies[0]
-    if (b0) recorder.record(world.time, b0.x, b0.y, b0.vx, b0.vy, b0.ax, b0.ay)
+    if (b0) recorder.record(world.time, b0.x, FLOOR_Y - b0.y, b0.vx, -b0.vy, b0.ax, -b0.ay)
     interaction.resume()
   }
 

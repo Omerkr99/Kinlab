@@ -91,7 +91,9 @@ export function WorldCanvas({ world, recorder, interaction }: Props) {
       if (!interaction.isPaused() && !interaction.isDragging()) {
         world.step(dt)
         const b = world.bodies[0]
-        if (b) recorder.record(world.time, b.x, b.y, b.vx, b.vy, b.ax, b.ay)
+        // Physical coordinate convention: floor = y=0, upward = positive.
+        // Transform: y_phys = FLOOR_Y − canvas_y, vy_phys = −vy, ay_phys = −ay
+        if (b) recorder.record(world.time, b.x, FLOOR_Y - b.y, b.vx, -b.vy, b.ax, -b.ay)
       }
 
       drawWorld(canvas, world)
