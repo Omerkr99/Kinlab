@@ -27,4 +27,5 @@ export class DataRecorder {
 
   getSeries(key: SeriesKey): number[] { return [...this.data[key]] }
   getLength(): number                  { return this.data.time.length }
+  isRecording(): boolean               { return this.recording }
 }

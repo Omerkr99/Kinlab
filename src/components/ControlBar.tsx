@@ -2,6 +2,7 @@ import { World } from '../engine'
 import { DataRecorder } from '../recorder'
 import { InteractionLayer } from '../engine'
 import { FLOOR_Y } from '../constants'
+import { RecordingIndicator } from './RecordingIndicator'
 
 interface Props {
   world: World
@@ -50,7 +51,7 @@ export function ControlBar({ world, recorder, interaction }: Props) {
   }
 
   return (
-    <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
       <button style={{ ...btnStyle, background: '#4A90E2', color: '#fff' }} onClick={handlePlay}>
         ▶ Play
       </button>
@@ -60,6 +61,8 @@ export function ControlBar({ world, recorder, interaction }: Props) {
       <button style={{ ...btnStyle, background: '#f0f0f0', color: '#333' }} onClick={handleReset}>
         ⏹ Reset
       </button>
+      {/* KAN-41: live recording status badge */}
+      <RecordingIndicator recorder={recorder} interaction={interaction} />
     </div>
   )
 }
