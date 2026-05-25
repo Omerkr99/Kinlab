@@ -2,6 +2,7 @@ import { useRef, useEffect } from 'react'
 import { World } from '../engine'
 import { DataRecorder } from '../recorder'
 import { InteractionLayer } from '../engine'
+import { FLOOR_Y, CANVAS_W, CANVAS_H, BALL_RADIUS } from '../constants'
 
 interface Props {
   world: World
@@ -9,7 +10,6 @@ interface Props {
   interaction: InteractionLayer
 }
 
-const BALL_RADIUS = 20
 const VEL_SCALE = 5
 
 function drawWorld(canvas: HTMLCanvasElement, world: World): void {
@@ -24,21 +24,21 @@ function drawWorld(canvas: HTMLCanvasElement, world: World): void {
   ctx.strokeStyle = '#555'
   ctx.lineWidth = 2
   ctx.beginPath()
-  ctx.moveTo(0, 500)
-  ctx.lineTo(canvas.width, 500)
+  ctx.moveTo(0, FLOOR_Y)
+  ctx.lineTo(canvas.width, FLOOR_Y)
   ctx.stroke()
 
   // Floor label
   ctx.fillStyle = '#999'
   ctx.font = '11px sans-serif'
-  ctx.fillText('floor (y = 500)', 8, 495)
+  ctx.fillText(`floor (y = ${FLOOR_Y})`, 8, FLOOR_Y - 5)
 
   // Bodies
   for (const b of world.bodies) {
     // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.08)'
     ctx.beginPath()
-    ctx.ellipse(b.x, 500, BALL_RADIUS * 0.8, 6, 0, 0, Math.PI * 2)
+    ctx.ellipse(b.x, FLOOR_Y, BALL_RADIUS * 0.8, 6, 0, 0, Math.PI * 2)
     ctx.fill()
 
     // Ball
@@ -91,7 +91,7 @@ export function WorldCanvas({ world, recorder, interaction }: Props) {
       if (!interaction.isPaused() && !interaction.isDragging()) {
         world.step(dt)
         const b = world.bodies[0]
-        if (b) recorder.record(world.time, b.x, b.vx, b.ax)
+        if (b) recorder.record(world.time, b.x, b.y, b.vx, b.vy, b.ax, b.ay)
       }
 
       drawWorld(canvas, world)
@@ -129,8 +129,8 @@ export function WorldCanvas({ world, recorder, interaction }: Props) {
   return (
     <canvas
       ref={canvasRef}
-      width={600}
-      height={520}
+      width={CANVAS_W}
+      height={CANVAS_H}
       style={{ border: '1px solid #ddd', borderRadius: 8, cursor: 'crosshair' }}
     />
   )

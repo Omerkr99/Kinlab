@@ -9,16 +9,24 @@ interface Props {
 }
 
 export function GraphCanvas({ recorder, xKey, yKey }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const engineRef = useRef<GraphEngine | null>(null)
+  const canvasRef   = useRef<HTMLCanvasElement>(null)
+  const engineRef   = useRef<GraphEngine | null>(null)
+  const lastLenRef  = useRef<number>(-1)   // KAN-36: dirty flag — skip redraw when no new data
 
   useEffect(() => {
     if (!canvasRef.current) return
     engineRef.current = new GraphEngine(canvasRef.current)
+    lastLenRef.current = -1  // force redraw on mount
   }, [])
+
+  // reset dirty flag when axes change so graph redraws immediately
+  useEffect(() => { lastLenRef.current = -1 }, [xKey, yKey])
 
   useEffect(() => {
     const id = setInterval(() => {
+      const currentLen = recorder.getLength()
+      if (currentLen === lastLenRef.current) return  // no new data — skip
+      lastLenRef.current = currentLen
       engineRef.current?.draw(recorder, xKey, yKey)
     }, 32)
     return () => clearInterval(id)

@@ -55,8 +55,11 @@ export class GraphEngine {
   private drawData(xs: number[], ys: number[]): void {
     const { ctx, w, h } = this
     const pad = 40
-    const xMin = Math.min(...xs), xMax = Math.max(...xs)
-    const yMin = Math.min(...ys), yMax = Math.max(...ys)
+    // KAN-34: avoid spread operator — Math.min(...arr) stack-overflows beyond ~65k elements
+    const xMin = xs.reduce((a, b) => Math.min(a, b), Infinity)
+    const xMax = xs.reduce((a, b) => Math.max(a, b), -Infinity)
+    const yMin = ys.reduce((a, b) => Math.min(a, b), Infinity)
+    const yMax = ys.reduce((a, b) => Math.max(a, b), -Infinity)
     const xRange = xMax - xMin || 1
     const yRange = yMax - yMin || 1
     const cx = (v: number) => pad + ((v - xMin) / xRange) * (w - pad - 10)

@@ -11,11 +11,12 @@ const world = new World()
 world.addBody(new Body({ x: 300, y: 50 }))
 const recorder = new DataRecorder()
 const interaction = new InteractionLayer()
-recorder.start()
+// KAN-35: recorder.start() removed from module level.
+// Recording begins explicitly when the user clicks Play in ControlBar.
 
 export default function App() {
   const [xKey, setXKey] = useState<SeriesKey>('time')
-  const [yKey, setYKey] = useState<SeriesKey>('x')
+  const [yKey, setYKey] = useState<SeriesKey>('y')   // default: time vs y (most informative)
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', background: '#f5f6f8', minHeight: '100vh', padding: 24 }}>
@@ -40,7 +41,7 @@ export default function App() {
           <ControlBar world={world} recorder={recorder} interaction={interaction} />
           <WorldCanvas world={world} recorder={recorder} interaction={interaction} />
           <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-            Click canvas to start recording • Drag ball to reposition
+            Press ▶ Play to start recording · Drag ball to reposition
           </div>
         </div>
 
@@ -52,7 +53,7 @@ export default function App() {
           <AxisSelector xKey={xKey} yKey={yKey} onXChange={setXKey} onYChange={setYKey} />
           <GraphCanvas recorder={recorder} xKey={xKey} yKey={yKey} />
           <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-            Updates live • Change axes to explore different variables
+            Updates live · Change axes to explore: x, y, vx, vy, ax, ay
           </div>
         </div>
       </div>

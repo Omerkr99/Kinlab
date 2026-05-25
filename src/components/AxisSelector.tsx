@@ -1,12 +1,15 @@
 import { SeriesKey } from '../recorder'
 
-const VARS: SeriesKey[] = ['time', 'x', 'vx', 'ax']
+const VARS: SeriesKey[] = ['time', 'x', 'y', 'vx', 'vy', 'ax', 'ay']
 
 const LABELS: Record<SeriesKey, string> = {
   time: 'time (s)',
-  x: 'position x (px)',
-  vx: 'velocity vx (px/s)',
-  ax: 'acceleration ax (px/s²)',
+  x:    'position x (px)',
+  y:    'position y (px)',
+  vx:   'velocity vx (px/s)',
+  vy:   'velocity vy (px/s)',
+  ax:   'acceleration ax (px/s²)',
+  ay:   'acceleration ay (px/s²)',
 }
 
 interface Props {

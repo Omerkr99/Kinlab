@@ -8,6 +8,9 @@ interface Props {
   interaction: InteractionLayer
 }
 
+const START_X = 300
+const START_Y = 50
+
 const btnStyle: React.CSSProperties = {
   padding: '8px 18px',
   fontSize: 14,
@@ -18,11 +21,18 @@ const btnStyle: React.CSSProperties = {
   transition: 'opacity 0.15s',
 }
 
+function resetBall(world: World): void {
+  world.time = 0
+  const b = world.bodies[0]
+  if (b) { b.x = START_X; b.y = START_Y; b.vx = 0; b.vy = 0; b.ax = 0; b.ay = 0 }
+}
+
 export function ControlBar({ world, recorder, interaction }: Props) {
   const handlePlay = () => {
-    interaction.resume()
+    resetBall(world)          // KAN-33: reset ball position before recording
     recorder.reset()
     recorder.start()
+    interaction.resume()
   }
 
   const handlePause = () => {
@@ -32,9 +42,7 @@ export function ControlBar({ world, recorder, interaction }: Props) {
   const handleReset = () => {
     interaction.pause()
     recorder.reset()
-    world.time = 0
-    const b = world.bodies[0]
-    if (b) { b.x = 300; b.y = 50; b.vx = 0; b.vy = 0; b.ax = 0; b.ay = 0 }
+    resetBall(world)
   }
 
   return (

@@ -1,8 +1,7 @@
 import { Body } from './Body'
+import { FLOOR_Y, GRAVITY } from '../constants'
 
-const GRAVITY = 9.8
 const MAX_DT = 0.016
-const FLOOR_Y = 500
 const DAMPING = 0.7
 const FRICTION = 0.85
 const VELOCITY_CLAMP = 0.2   // must be > GRAVITY*MAX_DT (9.8*0.016=0.157) so resting ball clamps
