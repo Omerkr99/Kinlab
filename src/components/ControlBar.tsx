@@ -32,6 +32,9 @@ export function ControlBar({ world, recorder, interaction }: Props) {
     resetBall(world)          // KAN-33: reset ball position before recording
     recorder.reset()
     recorder.start()
+    // Record t=0 initial state so graphs always start from the launch point
+    const b0 = world.bodies[0]
+    if (b0) recorder.record(world.time, b0.x, b0.y, b0.vx, b0.vy, b0.ax, b0.ay)
     interaction.resume()
   }
 

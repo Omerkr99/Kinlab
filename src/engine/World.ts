@@ -20,6 +20,12 @@ export class World {
     this.time += safeDt
 
     for (const b of this.bodies) {
+      // Skip physics entirely for resting bodies — avoids infinite micro-bounce loop.
+      // A body is at rest when it is on the floor, has been clamped (vy===0, vx===0),
+      // and carries zero net acceleration.  Dragging the ball above the floor will
+      // naturally break this condition (b.y < FLOOR_Y) and wake it back up.
+      if (b.y >= FLOOR_Y && b.vy === 0 && b.vx === 0 && b.ay === 0) continue
+
       // Euler integration
       b.ay = GRAVITY
       b.vx += b.ax * safeDt
@@ -34,10 +40,12 @@ export class World {
         b.vx *= FRICTION
       }
 
-      // Velocity clamping — prevents infinite micro-bouncing
+      // Velocity clamping — prevents infinite micro-bouncing.
+      // Also zeroes ay so recorded data shows net acceleration = 0 at rest.
       if (Math.abs(b.vy) < VELOCITY_CLAMP && b.y >= FLOOR_Y) {
         b.vy = 0
         b.vx = 0
+        b.ay = 0   // net acceleration = 0 at rest (normal force cancels gravity)
       }
     }
   }
