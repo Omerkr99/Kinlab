@@ -5,6 +5,7 @@ import { WorldCanvas } from './canvas/WorldCanvas'
 import { GraphCanvas } from './canvas/GraphCanvas'
 import { ControlBar } from './components/ControlBar'
 import { AxisSelector } from './components/AxisSelector'
+import { DemoPanel } from './components/DemoPanel'
 
 // ⚠️ OUTSIDE component — stable refs, never recreated on render
 const world = new World()
@@ -57,6 +58,9 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* Day 2 Demo Panel */}
+      <DemoPanel />
     </div>
   )
 }

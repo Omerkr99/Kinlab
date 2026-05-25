@@ -121,7 +121,7 @@ describe('Load: GraphEngine render', () => {
     const ge = new GraphEngine(canvas)
     const r = new DataRecorder()
     r.start()
-    for (let i = 0; i < 1_000; i++) r.record(i * 0.016, i * 0.1, i * 0.2, 9.8)
+    for (let i = 0; i < 1_000; i++) r.record(i * 0.016, i * 0.1, i * 0.2, i * 0.5, i * -0.3, 9.8, 9.8)
     const ms = elapsed(() => ge.draw(r, 'time', 'x'))
     console.log(`  [GRAPH] draw 1k pts → ${ms.toFixed(2)} ms`)
     expect(ms).toBeLessThan(5)
@@ -133,7 +133,7 @@ describe('Load: GraphEngine render', () => {
     const ge = new GraphEngine(canvas)
     const r = new DataRecorder()
     r.start()
-    for (let i = 0; i < 10_000; i++) r.record(i * 0.016, i * 0.1, i * 0.2, 9.8)
+    for (let i = 0; i < 10_000; i++) r.record(i * 0.016, i * 0.1, i * 0.2, i * 0.5, i * -0.3, 9.8, 9.8)
     const ms = elapsed(() => ge.draw(r, 'time', 'x'))
     console.log(`  [GRAPH] draw 10k pts → ${ms.toFixed(2)} ms`)
     expect(ms).toBeLessThan(40)  // raised from 20→40: original run 20.56ms, 2× headroom for slower machines
@@ -145,7 +145,7 @@ describe('Load: GraphEngine render', () => {
     const ge = new GraphEngine(canvas)
     const r = new DataRecorder()
     r.start()
-    for (let i = 0; i < 500; i++) r.record(i * 0.016, i * 0.1, i * 0.2, 9.8)
+    for (let i = 0; i < 500; i++) r.record(i * 0.016, i * 0.1, i * 0.2, i * 0.5, i * -0.3, 9.8, 9.8)
     const ms = elapsed(() => {
       for (let f = 0; f < 30; f++) ge.draw(r, 'time', 'x')
     })
