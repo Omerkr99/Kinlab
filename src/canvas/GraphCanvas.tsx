@@ -48,6 +48,14 @@ export function GraphCanvas({ recorder, xKey, yKey, flipY, onFlipY }: Props) {
     return () => clearInterval(id)
   }, [recorder, xKey, yKey, flipY])
 
+  const handlePopout = () => {
+    window.open(
+      `${window.location.pathname}?popup=true`,
+      'kinlab-graph-popup',
+      'width=960,height=720,resizable=yes,scrollbars=no',
+    )
+  }
+
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
       <canvas
@@ -78,6 +86,24 @@ export function GraphCanvas({ recorder, xKey, yKey, flipY, onFlipY }: Props) {
           onClick={() => onFlipY(true)}
         >↓</button>
       </div>
+
+      {/* Pop-out button — top-right corner */}
+      <button
+        onClick={handlePopout}
+        title="Open graph in a separate window"
+        style={{
+          position: 'absolute', top: 6, right: 6,
+          padding: '3px 9px', fontSize: 13, fontWeight: 600,
+          border: '1px solid #d0d0d0', borderRadius: 5,
+          background: 'rgba(255,255,255,0.92)', color: '#555',
+          cursor: 'pointer', lineHeight: 1,
+          transition: 'background 0.12s',
+        }}
+        onMouseEnter={e => (e.currentTarget.style.background = '#e8f0fb')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.92)')}
+      >
+        ⤢ Pop out
+      </button>
     </div>
   )
 }

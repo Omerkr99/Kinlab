@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { World, Body, InteractionLayer } from './engine'
 import { DataRecorder, SeriesKey } from './recorder'
 import { WorldCanvas } from './canvas/WorldCanvas'
@@ -8,7 +8,8 @@ import { AxisSelector } from './components/AxisSelector'
 import { GravitySlider } from './components/GravitySlider'
 import { DataTable } from './components/DataTable'
 import { CsvExportButton } from './components/CsvExportButton'
-import { DemoPanel } from './components/DemoPanel'
+import { Day3Panel } from './components/Day3Panel'
+import { GraphPopup } from './components/GraphPopup'
 
 // ⚠️ OUTSIDE component — stable refs, never recreated on render
 const world       = new World()
@@ -17,6 +18,11 @@ const recorder    = new DataRecorder()
 const interaction = new InteractionLayer()
 
 export default function App() {
+  // ── Popup mode: render standalone graph window ────────────────────────────
+  const isPopup = new URLSearchParams(window.location.search).get('popup') === 'true'
+  if (isPopup) return <GraphPopup />
+
+  // ── Normal app state ──────────────────────────────────────────────────────
   const [xKey,    setXKey]    = useState<SeriesKey>('time')
   const [yKey,    setYKey]    = useState<SeriesKey>('y')
   const [flipY,   setFlipY]   = useState(false)
@@ -27,6 +33,36 @@ export default function App() {
     setGravity(g)       // update slider display
   }
 
+  // ── BroadcastChannel: stream recorder data to popup graph window ──────────
+  useEffect(() => {
+    const ch = new BroadcastChannel('kinlab-graph')
+
+    const broadcast = () => {
+      if (recorder.getLength() === 0) return
+      ch.postMessage({
+        type:   'data',
+        series: {
+          time: recorder.getSeries('time'),
+          x:    recorder.getSeries('x'),
+          y:    recorder.getSeries('y'),
+          vx:   recorder.getSeries('vx'),
+          vy:   recorder.getSeries('vy'),
+          ax:   recorder.getSeries('ax'),
+          ay:   recorder.getSeries('ay'),
+        },
+      })
+    }
+
+    // Respond immediately when popup requests data
+    ch.onmessage = (e) => { if (e.data?.type === 'request') broadcast() }
+
+    // Also push updates every 300 ms while app is running
+    const id = setInterval(broadcast, 300)
+
+    return () => { clearInterval(id); ch.close() }
+  }, [])
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', background: '#f5f6f8', minHeight: '100vh', padding: 24 }}>
 
@@ -72,11 +108,11 @@ export default function App() {
             <CsvExportButton recorder={recorder} />
           </div>
 
-          {/* KAN-41 indicator lives inside ControlBar; graph has ↑↓ arrows */}
+          {/* KAN-41 indicator lives inside ControlBar; graph has ↑↓ arrows + ⤢ pop-out */}
           <GraphCanvas recorder={recorder} xKey={xKey} yKey={yKey} flipY={flipY} onFlipY={setFlipY} />
 
           <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-            Updates live · ↑↓ arrows flip Y direction · ⬇ CSV to download
+            Updates live · ↑↓ flip Y direction · ⤢ pop-out for a dedicated graph window · ⬇ CSV
           </div>
 
           {/* KAN-43: data table (collapsible) */}
@@ -84,8 +120,8 @@ export default function App() {
         </div>
       </div>
 
-      {/* Day 2 Demo Panel */}
-      <DemoPanel />
+      {/* Day 3 Demo Panel */}
+      <Day3Panel />
     </div>
   )
 }
