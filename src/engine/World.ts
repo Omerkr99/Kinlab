@@ -16,15 +16,16 @@ export class World {
   }
 
   step(dt: number): void {
-    const safeDt = Math.min(dt, MAX_DT)
+    // Clamp to [0, MAX_DT]: reject negative dt (time cannot go backward)
+    const safeDt = Math.min(Math.max(dt, 0), MAX_DT)
     this.time += safeDt
 
     for (const b of this.bodies) {
-      // Skip physics entirely for resting bodies — avoids infinite micro-bounce loop.
-      // A body is at rest when it is on the floor, has been clamped (vy===0, vx===0),
-      // and carries zero net acceleration.  Dragging the ball above the floor will
-      // naturally break this condition (b.y < FLOOR_Y) and wake it back up.
-      if (b.y >= FLOOR_Y && b.vy === 0 && b.vx === 0 && b.ay === 0) continue
+      // Skip physics for resting bodies — avoids infinite micro-bounce loop.
+      // Condition uses === FLOOR_Y (not >=) so bodies that start or are dragged
+      // *below* the floor are NOT trapped: they bounce up to FLOOR_Y on the
+      // next step and then get clamped normally.
+      if (b.y === FLOOR_Y && b.vy === 0 && b.vx === 0 && b.ay === 0) continue
 
       // Euler integration
       b.ay = GRAVITY
