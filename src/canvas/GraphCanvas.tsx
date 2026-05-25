@@ -4,29 +4,44 @@ import { GraphEngine } from '../graph/GraphEngine'
 
 interface Props {
   recorder: DataRecorder
-  xKey: SeriesKey
-  yKey: SeriesKey
-  flipY?: boolean   // negate Y series for display (canvas ↓+ convention)
+  xKey:     SeriesKey
+  yKey:     SeriesKey
+  flipY:    boolean
+  onFlipY:  (v: boolean) => void
 }
 
-export function GraphCanvas({ recorder, xKey, yKey, flipY = false }: Props) {
+const arrowBtn = (active: boolean): React.CSSProperties => ({
+  width: 26, height: 26,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  fontSize: 15, lineHeight: 1,
+  border: `1.5px solid ${active ? '#4A90E2' : '#ccc'}`,
+  borderRadius: 5,
+  background: active ? '#e8f0fb' : '#f9f9f9',
+  color: active ? '#2060c0' : '#aaa',
+  cursor: 'pointer',
+  fontWeight: active ? 700 : 400,
+  transition: 'all 0.12s',
+  userSelect: 'none' as const,
+  padding: 0,
+})
+
+export function GraphCanvas({ recorder, xKey, yKey, flipY, onFlipY }: Props) {
   const canvasRef   = useRef<HTMLCanvasElement>(null)
   const engineRef   = useRef<GraphEngine | null>(null)
-  const lastLenRef  = useRef<number>(-1)   // KAN-36: dirty flag — skip redraw when no new data
+  const lastLenRef  = useRef<number>(-1)
 
   useEffect(() => {
     if (!canvasRef.current) return
     engineRef.current = new GraphEngine(canvasRef.current)
-    lastLenRef.current = -1  // force redraw on mount
+    lastLenRef.current = -1
   }, [])
 
-  // reset dirty flag when axes or flip direction change so graph redraws immediately
   useEffect(() => { lastLenRef.current = -1 }, [xKey, yKey, flipY])
 
   useEffect(() => {
     const id = setInterval(() => {
       const currentLen = recorder.getLength()
-      if (currentLen === lastLenRef.current) return  // no new data — skip
+      if (currentLen === lastLenRef.current) return
       lastLenRef.current = currentLen
       engineRef.current?.draw(recorder, xKey, yKey, flipY)
     }, 32)
@@ -34,11 +49,35 @@ export function GraphCanvas({ recorder, xKey, yKey, flipY = false }: Props) {
   }, [recorder, xKey, yKey, flipY])
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={500}
-      height={400}
-      style={{ border: '1px solid #ddd', borderRadius: 8, background: '#fff' }}
-    />
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <canvas
+        ref={canvasRef}
+        width={500}
+        height={400}
+        style={{ border: '1px solid #ddd', borderRadius: 8, background: '#fff', display: 'block' }}
+      />
+
+      {/* Y-direction arrows — overlaid on the graph, left of the Y-axis */}
+      <div style={{
+        position: 'absolute',
+        left: 6,
+        top: '50%',
+        transform: 'translateY(-50%)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+      }}>
+        <button
+          style={arrowBtn(!flipY)}
+          title="↑ positive — physical convention (floor = 0, up = +)"
+          onClick={() => onFlipY(false)}
+        >↑</button>
+        <button
+          style={arrowBtn(flipY)}
+          title="↓ positive — canvas convention (top = 0, down = +)"
+          onClick={() => onFlipY(true)}
+        >↓</button>
+      </div>
+    </div>
   )
 }

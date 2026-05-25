@@ -52,8 +52,8 @@ export default function App() {
           <div style={{ marginBottom: 6, fontSize: 12, color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
             Data Graph
           </div>
-          <AxisSelector xKey={xKey} yKey={yKey} flipY={flipY} onXChange={setXKey} onYChange={setYKey} onFlipY={setFlipY} />
-          <GraphCanvas recorder={recorder} xKey={xKey} yKey={yKey} flipY={flipY} />
+          <AxisSelector xKey={xKey} yKey={yKey} onXChange={setXKey} onYChange={setYKey} />
+          <GraphCanvas recorder={recorder} xKey={xKey} yKey={yKey} flipY={flipY} onFlipY={setFlipY} />
           <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
             Updates live · Change axes to explore: x, y, vx, vy, ax, ay
           </div>
