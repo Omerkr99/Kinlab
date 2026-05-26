@@ -12,7 +12,7 @@ Browser-based kinematics lab. Drop a ball, record motion data, analyze graphs in
 npm install
 npm run dev        # → localhost:5173
 npm test           # watch mode
-npm run test:run   # single run (434 tests)
+npm run test:run   # single run (494 tests)
 npm run build      # production → dist/
 ```
 
@@ -96,6 +96,18 @@ Physics is the **source of truth** — always runs in pixels internally. The UI 
 
 ---
 
+### Day 7 — GraphEngine.ts + GraphCanvas.tsx (KAN-15)
+> Graph rendering, 30fps dirty-flag polling, flipY, unit-aware axis labels, pop-out window
+
+- **T7.1** `GraphEngine.ts` — `draw(recorder, xKey, yKey, flipY, scale)`: `drawGrid` (50px grid), `drawAxes` with `axisLabel()` unit strings + min/max tick annotations, `drawData` with auto-scale (`xRange || 1`)
+- **T7.2** `GraphEngine.test.ts` — 2 gate tests: no throw with 2+ pts, early return with < 2 pts
+- **T7.3** `GraphCanvas.tsx` — `useRef` engine singleton, `setInterval(32ms)` dirty-flag loop (skips frame when recorder length unchanged), `flipY` + `scale` reset dirty flag
+- **T7.4** App integration — `WorldCanvas` + `GraphCanvas` side-by-side; recorder seeded by `ControlBar.handlePlay`; popup graph via `BroadcastChannel`
+- `src/day7.test.ts` — 42 unit tests (T7.1–T7.4: constructor, guards, auto-scale, flipY, scale conversion, axis labels, dirty-flag logic, end-to-end pipeline)
+- `src/day7-load.test.ts` — 18 load tests (60fps throughput, scale conversion, flipY under load, 3 600-frame pipeline, determinism)
+
+---
+
 ### Day 6 — WorldCanvas.tsx + rAF Loop (KAN-14)
 > Canvas rendering, 60fps animation loop, FR-21 velocity arrow
 
@@ -127,15 +139,15 @@ Physics is the **source of truth** — always runs in pixels internally. The UI 
 |---|---|---|
 | `engine/Body.test.ts` | 2 | Body defaults & init |
 | `engine/World.test.ts` | 5 | Euler, floor collision, dt clamp |
-| `engine/InteractionLayer.test.ts` | 4 | Drag & pause API |
-| `engine/determinism.test.ts` | 21 | Engine determinism — 6 scenarios |
-| `recorder/DataRecorder.test.ts` | 10 | Record, getSeries, stop, reset |
-| `graph/GraphEngine.test.ts` | 4 | Draw, flipY, guard |
-| `integration.test.ts` | 5 | Full pipeline smoke tests |
-| `day2.test.ts` | 28 | Day 2 kinematics & fixes |
+| `engine/InteractionLayer.test.ts` | 3 | Drag & pause API |
+| `engine/determinism.test.ts` | 14 | Engine determinism — multi-body, gravity switches |
+| `recorder/DataRecorder.test.ts` | 5 | Record, getSeries, stop, reset |
+| `graph/GraphEngine.test.ts` | 2 | Draw, guard (T7.2 gate tests) |
+| `integration.test.ts` | 8 | Full pipeline smoke tests |
+| `data-integrity.test.ts` | 22 | Physics data correctness — direction, bounce, rest |
 | `day3.test.ts` | 28 | Wall collisions, CSV, table, slider |
-| `day4.test.ts` | 64 | Phase 2 complete verification |
-| `units/PhysicsScale.test.ts` | 25 | Unit conversions & gravity math |
+| `day4.test.ts` | 51 | Phase 2 complete verification |
+| `units/PhysicsScale.test.ts` | 29 | Unit conversions & gravity math |
 | `load.test.ts` | 14 | Throughput & render performance |
 | `stress-reliability.test.ts` | 41 | Stress, invariants, determinism × 10 |
 | `readiness.test.ts` | 49 | Day-4 prep — multi-body, memory, CSV |
@@ -144,8 +156,10 @@ Physics is the **source of truth** — always runs in pixels internally. The UI 
 | `day5-load.test.ts` | 31 | Day 5 load — EventBus throughput, FPS precision, math batch, full pipeline |
 | `day6.test.ts` | 33 | T6.1–T6.4 — dt cap, coord transform, draw guards, arch, FPS |
 | `day6-load.test.ts` | 15 | Day 6 load — 36k frames, determinism, gravity switch, graph render |
+| `day7.test.ts` | 42 | T7.1–T7.4 — GraphEngine API, guards, flipY, scale, dirty-flag, pipeline |
+| `day7-load.test.ts` | 18 | Day 7 load — graph throughput, scale conversion, flipY, determinism |
 
-**Total: 434 / 434 ✅**
+**Total: 494 / 494 ✅**
 
 ---
 
