@@ -12,7 +12,7 @@ Browser-based kinematics lab. Drop a ball, record motion data, analyze graphs in
 npm install
 npm run dev        # → localhost:5173
 npm test           # watch mode
-npm run test:run   # single run (494 tests)
+npm run test:run   # single run (547 tests)
 npm run build      # production → dist/
 ```
 
@@ -96,6 +96,20 @@ Physics is the **source of truth** — always runs in pixels internally. The UI 
 
 ---
 
+### Day 8 — Mouse Events + ControlBar (KAN-16)
+> WorldCanvas mouse interaction, ControlBar Play/Pause/Reset, UC-1..4 verified
+
+- **T8.1** `WorldCanvas.tsx` — `mousedown` (drag hit-test or reset+start), `mousemove` (updateDrag), `mouseup` (endDrag) + `removeEventListener` cleanup
+- **T8.2** `ControlBar.tsx` — Play (resume+reset+start+reposition), Pause (inter.pause), Reset (pause+reset+reposition), Stop (pause+stop)
+- **T8.3** ControlBar above WorldCanvas in `App.tsx`, shared recorder reference
+- **T8.4** Git commit tagged
+- UC-1 drop/bounce · UC-2 pause/resume · UC-3 drag · UC-4 click starts recording
+- `src/day8.test.ts` — 43 unit tests (UC-1..4 + T8.1-T8.3 contract)
+- `src/day8-load.test.ts` — 15 load tests (drag throughput, pause cycles, session restarts, full UC pipeline)
+- `Day7Panel.tsx` replaces Day6Panel — live GraphEngine demo: axis selector, scale switcher, flipY, dirty-flag counter
+
+---
+
 ### Day 7 — GraphEngine.ts + GraphCanvas.tsx (KAN-15)
 > Graph rendering, 30fps dirty-flag polling, flipY, unit-aware axis labels, pop-out window
 
@@ -158,8 +172,10 @@ Physics is the **source of truth** — always runs in pixels internally. The UI 
 | `day6-load.test.ts` | 15 | Day 6 load — 36k frames, determinism, gravity switch, graph render |
 | `day7.test.ts` | 42 | T7.1–T7.4 — GraphEngine API, guards, flipY, scale, dirty-flag, pipeline |
 | `day7-load.test.ts` | 18 | Day 7 load — graph throughput, scale conversion, flipY, determinism |
+| `day8.test.ts` | 43 | UC-1..4 + T8.1–T8.3 — drop/bounce, pause/resume, drag, click-starts-recording |
+| `day8-load.test.ts` | 15 | Day 8 load — drag throughput, pause cycles, session restarts, UC pipeline |
 
-**Total: 494 / 494 ✅**
+**Total: 547 / 547 ✅**
 
 ---
 
