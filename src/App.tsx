@@ -10,6 +10,7 @@ import { DataTable } from './components/DataTable'
 import { CsvExportButton } from './components/CsvExportButton'
 import { ScaleControl } from './components/ScaleControl'
 import { Day3Panel } from './components/Day3Panel'
+import { Day5Panel } from './components/Day5Panel'
 import { GraphPopup } from './components/GraphPopup'
 import {
   PhysicsScale, DEFAULT_SCALE,
@@ -155,6 +156,9 @@ export default function App() {
 
       {/* Day 3 Demo Panel */}
       <Day3Panel />
+
+      {/* Day 5 Demo Panel */}
+      <Day5Panel />
     </div>
   )
 }
