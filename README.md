@@ -12,7 +12,7 @@ Browser-based kinematics lab. Drop a ball, record motion data, analyze graphs in
 npm install
 npm run dev        # → localhost:5173
 npm test           # watch mode
-npm run test:run   # single run (386 tests)
+npm run test:run   # single run (434 tests)
 npm run build      # production → dist/
 ```
 
@@ -96,6 +96,19 @@ Physics is the **source of truth** — always runs in pixels internally. The UI 
 
 ---
 
+### Day 6 — WorldCanvas.tsx + rAF Loop (KAN-14)
+> Canvas rendering, 60fps animation loop, FR-21 velocity arrow
+
+- **T6.1** `WorldCanvas.tsx` — `useEffect` rAF loop, `dt = Math.min(elapsed/1000, 0.016)`, `world.step(dt)` + `recorder.record()` every frame
+- **T6.2** `draw()` — `clearRect`, floor line at `y=FLOOR_Y`, radial-gradient blue ball, red velocity arrow (`VEL_SCALE=5`, FR-21), scale ruler overlay
+- **T6.3** App architecture — `world` / `recorder` / `interaction` instances created **outside** the component (stable rAF closure, no recreation on re-render)
+- **T6.4** FPS verified — `FpsMeter` in loop measures ~60fps; throughput: 3600 frames < 200ms
+- `src/day6.test.ts` — 33 unit tests (dt capping, coord transform, pause/resume, draw guards, architecture)
+- `src/day6-load.test.ts` — 15 load tests (36k frames NaN-free, determinism, gravity switch mid-loop)
+- `Day6Panel.tsx` replaces Day3Panel + Day5Panel — live telemetry: FPS gauge, dt value, KE/PE, event feed
+
+---
+
 ### Day 5 — Architectural Infrastructure & System Tests
 > Shared types, physics event bus, math helpers, FPS meter, recorder integration
 
@@ -129,8 +142,10 @@ Physics is the **source of truth** — always runs in pixels internally. The UI 
 | `recorder/integration.test.ts` | 15 | T5.3 — step↔recorder pipeline integrity |
 | `day5.test.ts` | 67 | Day 5 infra — types, events, math, FPS |
 | `day5-load.test.ts` | 31 | Day 5 load — EventBus throughput, FPS precision, math batch, full pipeline |
+| `day6.test.ts` | 33 | T6.1–T6.4 — dt cap, coord transform, draw guards, arch, FPS |
+| `day6-load.test.ts` | 15 | Day 6 load — 36k frames, determinism, gravity switch, graph render |
 
-**Total: 386 / 386 ✅**
+**Total: 434 / 434 ✅**
 
 ---
 

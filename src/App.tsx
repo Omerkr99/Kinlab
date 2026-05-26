@@ -9,8 +9,7 @@ import { GravitySlider } from './components/GravitySlider'
 import { DataTable } from './components/DataTable'
 import { CsvExportButton } from './components/CsvExportButton'
 import { ScaleControl } from './components/ScaleControl'
-import { Day3Panel } from './components/Day3Panel'
-import { Day5Panel } from './components/Day5Panel'
+import { Day6Panel } from './components/Day6Panel'
 import { GraphPopup } from './components/GraphPopup'
 import {
   PhysicsScale, DEFAULT_SCALE,
@@ -154,11 +153,8 @@ export default function App() {
         </div>
       </div>
 
-      {/* Day 3 Demo Panel */}
-      <Day3Panel />
-
-      {/* Day 5 Demo Panel */}
-      <Day5Panel />
+      {/* Day 6 Demo Panel — replaces Day 3 + Day 5 panels */}
+      <Day6Panel />
     </div>
   )
 }
