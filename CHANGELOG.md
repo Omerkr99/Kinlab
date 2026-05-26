@@ -241,6 +241,15 @@ KAN-13 "Day 5 – DataRecorder.ts" — תשתית ארכיטקטונית + בד�
 | Physical bounds | y ≤ FLOOR_Y, x ∈ [WALL_L, WALL_R] |
 | Multi-body | 5 גופים × 5 recorders, time זהה |
 
+**`src/day5-load.test.ts`** — 31 בדיקות עומסים (Day5Panel + load):
+| קטגוריה | מה נבדק |
+|---|---|
+| PhysicsEventBus throughput | 100k emit×1, 10k emit×10, subscribe/unsubscribe 1k cycles, fan-out, clear mid-stream |
+| FpsMeter precision | 10k ticks @60fps, sliding window, min/max, reset O(1), 1k reset cycles |
+| Math utils batch | kineticEnergy 1M, potentialEnergy 1M, mechanicalEnergy 500k, NaN guards |
+| Full pipeline | 10k steps World+Bus+Recorder+FpsMeter+Math, energy decay, 20 bodies×2k, determinism |
+| Cross-module | PhysicsScale↔Math, SimulationConfig↔constants, RecorderSnapshot, BodySnapshot round-trip, WALL_DAMPING↔KE |
+
 **`src/day5.test.ts`** — 67 בדיקות:
 | קטגוריה | בדיקות |
 |---|---|
@@ -265,8 +274,8 @@ KAN-13 "Day 5 – DataRecorder.ts" — תשתית ארכיטקטונית + בד�
 
 | מדד | ערך |
 |---|---|
-| 🧪 בדיקות | **355 / 355** ✅ |
-| 📁 קבצי test | 16 קבצים |
+| 🧪 בדיקות | **386 / 386** ✅ |
+| 📁 קבצי test | 17 קבצים |
 | 🏷️ גרסה | v0.5.0 |
 | 🔗 GitHub | `main` branch |
 | 📋 Jira | KAN-13 Done · KAN-12 Done · KAN-41..45 Done |

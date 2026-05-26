@@ -12,7 +12,7 @@ Browser-based kinematics lab. Drop a ball, record motion data, analyze graphs in
 npm install
 npm run dev        # → localhost:5173
 npm test           # watch mode
-npm run test:run   # single run (355 tests)
+npm run test:run   # single run (386 tests)
 npm run build      # production → dist/
 ```
 
@@ -128,8 +128,9 @@ Physics is the **source of truth** — always runs in pixels internally. The UI 
 | `readiness.test.ts` | 49 | Day-4 prep — multi-body, memory, CSV |
 | `recorder/integration.test.ts` | 15 | T5.3 — step↔recorder pipeline integrity |
 | `day5.test.ts` | 67 | Day 5 infra — types, events, math, FPS |
+| `day5-load.test.ts` | 31 | Day 5 load — EventBus throughput, FPS precision, math batch, full pipeline |
 
-**Total: 355 / 355 ✅**
+**Total: 386 / 386 ✅**
 
 ---
 
