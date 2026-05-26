@@ -12,7 +12,7 @@ Browser-based kinematics lab. Drop a ball, record motion data, analyze graphs in
 npm install
 npm run dev        # → localhost:5173
 npm test           # watch mode
-npm run test:run   # single run (273 tests)
+npm run test:run   # single run (355 tests)
 npm run build      # production → dist/
 ```
 
@@ -96,6 +96,18 @@ Physics is the **source of truth** — always runs in pixels internally. The UI 
 
 ---
 
+### Day 5 — Architectural Infrastructure & System Tests
+> Shared types, physics event bus, math helpers, FPS meter, recorder integration
+
+- `src/types/index.ts` — shared type registry (`PlayState`, `SimulationConfig`, `BodySnapshot`, `SeriesKey`, `RecorderSnapshot`, `AxisDescriptor`)
+- `src/engine/PhysicsEvents.ts` — `PhysicsEventBus` pub/sub for `floor-bounce`, `wall-bounce`, `rest`, `step` events
+- `src/utils/math.ts` — pure physics math helpers: `clamp`, `lerp`, `roundTo`, `kineticEnergy`, `potentialEnergy`, `mechanicalEnergy`, `mapRange`
+- `src/utils/fps.ts` — `FpsMeter` rolling-average FPS counter (configurable window, min/max, reset)
+- `src/recorder/integration.test.ts` — KAN-13 T5.3: 15 integration tests (step↔length parity, time monotonicity, NaN guard, stop gate, multi-body)
+- `src/day5.test.ts` — 67 readiness tests covering all new infrastructure + cross-module integration
+
+---
+
 ## Test Coverage
 
 | Suite | Tests | Focus |
@@ -114,8 +126,10 @@ Physics is the **source of truth** — always runs in pixels internally. The UI 
 | `load.test.ts` | 14 | Throughput & render performance |
 | `stress-reliability.test.ts` | 41 | Stress, invariants, determinism × 10 |
 | `readiness.test.ts` | 49 | Day-4 prep — multi-body, memory, CSV |
+| `recorder/integration.test.ts` | 15 | T5.3 — step↔recorder pipeline integrity |
+| `day5.test.ts` | 67 | Day 5 infra — types, events, math, FPS |
 
-**Total: 273 / 273 ✅**
+**Total: 355 / 355 ✅**
 
 ---
 
@@ -146,6 +160,11 @@ src/
 │   └── GraphPopup.tsx          ← detached graph window
 ├── units/
 │   └── PhysicsScale.ts         ← unit calibration layer
+├── types/
+│   └── index.ts                ← shared type definitions
+├── utils/
+│   ├── math.ts                 ← clamp, lerp, energy helpers
+│   └── fps.ts                  ← FpsMeter rolling FPS counter
 ├── constants.ts                ← shared physics & canvas constants
 └── App.tsx
 ```
