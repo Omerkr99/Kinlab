@@ -1,17 +1,37 @@
-import { GRAVITY } from '../constants'
+import {
+  PhysicsScale, DEFAULT_SCALE,
+  GRAVITY_PRESETS_MS2,
+  gravityMs2ToEngine,
+  gravityEngineToDisplay,
+  gravitySliderMax,
+  gravitySliderStep,
+  accelUnit,
+} from '../units/PhysicsScale'
 
 interface Props {
+  /** Engine value in px/s² */
   value:    number
-  onChange: (g: number) => void
+  onChange: (enginePxS2: number) => void
+  scale?:   PhysicsScale
 }
 
-export function GravitySlider({ value, onChange }: Props) {
-  const presets = [
-    { label: '0',    g: 0,    title: 'Zero gravity' },
-    { label: '1.6',  g: 1.6,  title: 'Moon (1.6 m/s²)' },
-    { label: '9.8',  g: 9.8,  title: 'Earth (9.8 m/s²)' },
-    { label: '24.8', g: 24.8, title: 'Jupiter (24.8 m/s²)' },
-  ]
+export function GravitySlider({ value, onChange, scale = DEFAULT_SCALE }: Props) {
+  const displayVal = gravityEngineToDisplay(value, scale)
+  const sliderMax  = gravitySliderMax(scale)
+  const sliderStep = gravitySliderStep(scale)
+  const unit       = accelUnit(scale)
+
+  // Convert display value (in current scale units/s²) → engine px/s²
+  const displayToEngine = (d: number) => d * scale.pixelsPerUnit
+
+  // Compute display value of a preset (originally in m/s²)
+  const presetDisplay = (ms2: number): number =>
+    gravityEngineToDisplay(gravityMs2ToEngine(ms2, scale), scale)
+
+  // Earth reference for reset button
+  const earthEngine  = gravityMs2ToEngine(9.8, scale)
+  const earthDisplay = presetDisplay(9.8)
+  const isEarth      = Math.abs(displayVal - earthDisplay) < sliderStep * 0.6
 
   const presetBtn = (active: boolean): React.CSSProperties => ({
     padding:      '2px 7px',
@@ -23,6 +43,10 @@ export function GravitySlider({ value, onChange }: Props) {
     color:        active ? '#2060c0' : '#555',
     cursor:       'pointer',
   })
+
+  // Slider tick labels: show a few meaningful values in display units
+  const moonDisplay    = presetDisplay(1.6)
+  const jupiterDisplay = presetDisplay(24.8)
 
   return (
     <div style={{
@@ -38,37 +62,57 @@ export function GravitySlider({ value, onChange }: Props) {
         <span style={{ fontSize: 12, fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: 0.8 }}>
           Gravity
         </span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e', minWidth: 60 }}>
-          {value.toFixed(1)} px/s²
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e', minWidth: 90 }}>
+          {displayVal.toFixed(scale.id === 'px' ? 1 : (sliderMax > 100 ? 0 : 1))} {unit}
         </span>
-        {/* Presets */}
+
+        {/* Planet presets */}
         <div style={{ display: 'flex', gap: 4 }}>
-          {presets.map(p => (
-            <button key={p.g} style={presetBtn(Math.abs(value - p.g) < 0.05)}
-              title={p.title} onClick={() => onChange(p.g)}>
-              {p.label}
-            </button>
-          ))}
+          {GRAVITY_PRESETS_MS2.map(p => {
+            const pd   = presetDisplay(p.ms2)
+            const active = Math.abs(displayVal - pd) < sliderStep * 0.6
+            return (
+              <button
+                key={p.label}
+                style={presetBtn(active)}
+                title={p.title}
+                onClick={() => onChange(gravityMs2ToEngine(p.ms2, scale))}
+              >
+                {p.icon} {p.label}
+              </button>
+            )
+          })}
         </div>
+
         {/* Reset to Earth */}
-        {Math.abs(value - GRAVITY) > 0.05 && (
+        {!isEarth && (
           <button
             style={{ fontSize: 11, padding: '2px 7px', border: '1px solid #ccc', borderRadius: 4, background: '#fff', cursor: 'pointer', color: '#888' }}
-            onClick={() => onChange(GRAVITY)}
-            title="Reset to Earth gravity">
+            onClick={() => onChange(earthEngine)}
+            title={`Reset to Earth gravity (${earthDisplay.toFixed(1)} ${unit})`}
+          >
             ↺ reset
           </button>
         )}
       </div>
+
       {/* Slider */}
       <input
-        type="range" min={0} max={30} step={0.1}
-        value={value}
-        onChange={e => onChange(parseFloat(e.target.value))}
+        type="range"
+        min={0}
+        max={sliderMax}
+        step={sliderStep}
+        value={displayVal}
+        onChange={e => onChange(displayToEngine(parseFloat(e.target.value)))}
         style={{ width: 300, accentColor: '#4A90E2', cursor: 'pointer' }}
       />
+
+      {/* Tick labels */}
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#aaa', marginTop: 2, width: 300 }}>
-        <span>0</span><span>Moon 1.6</span><span>Earth 9.8</span><span>30</span>
+        <span>0</span>
+        <span>Moon {moonDisplay.toFixed(moonDisplay < 10 ? 1 : 0)}</span>
+        <span>Earth {earthDisplay.toFixed(earthDisplay < 10 ? 1 : 0)}</span>
+        <span>{sliderMax.toFixed(sliderMax < 100 ? 0 : 0)}</span>
       </div>
     </div>
   )

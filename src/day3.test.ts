@@ -145,9 +145,9 @@ describe('KAN-44: CSV export (buildCsv)', () => {
 
   test('CSV header is correct', () => {
     const r = makeRecorder(5)
-    const csv = buildCsv(r)
+    const csv = buildCsv(r)   // called without scale → DEFAULT_SCALE (px)
     const header = csv.split('\n')[0]
-    expect(header).toBe('time,x,y_height,vx,vy,ax,ay')
+    expect(header).toBe('time,x (px),y_height (px),vx (px/s),vy (px/s),ax (px/s²),ay (px/s²)')
   })
 
   test('row count = samples + 1 header', () => {

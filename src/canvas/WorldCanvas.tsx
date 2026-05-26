@@ -3,16 +3,74 @@ import { World } from '../engine'
 import { DataRecorder } from '../recorder'
 import { InteractionLayer } from '../engine'
 import { FLOOR_Y, CANVAS_W, CANVAS_H, BALL_RADIUS } from '../constants'
+import { PhysicsScale, DEFAULT_SCALE } from '../units/PhysicsScale'
 
 interface Props {
-  world: World
-  recorder: DataRecorder
+  world:       World
+  recorder:    DataRecorder
   interaction: InteractionLayer
+  scale?:      PhysicsScale
 }
 
 const VEL_SCALE = 5
 
-function drawWorld(canvas: HTMLCanvasElement, world: World): void {
+/**
+ * Draw a compact scale ruler in the bottom-left corner.
+ * Skipped in px mode (no real-world calibration).
+ */
+function drawScaleRuler(ctx: CanvasRenderingContext2D, scale: PhysicsScale): void {
+  if (scale.id === 'px') return
+
+  const { pixelsPerUnit, unitSymbol } = scale
+
+  // Pick a ruler width that looks good (~60-120 px on screen)
+  let rulerPx    = pixelsPerUnit
+  let rulerUnits = 1
+  if (rulerPx > 150) {
+    // E.g. if scale is huge, show half a unit
+    rulerPx    = pixelsPerUnit / 2
+    rulerUnits = 0.5
+  } else if (rulerPx < 20) {
+    // E.g. very small unit — show 10 units
+    rulerPx    = pixelsPerUnit * 10
+    rulerUnits = 10
+  } else if (rulerPx < 40) {
+    rulerPx    = pixelsPerUnit * 5
+    rulerUnits = 5
+  }
+
+  const x0 = 10
+  const y0 = FLOOR_Y - 22
+
+  // Ruler background
+  ctx.fillStyle = 'rgba(255,255,255,0.7)'
+  ctx.fillRect(x0 - 3, y0 - 14, rulerPx + 6, 22)
+
+  // Ruler line
+  ctx.strokeStyle = '#555'
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  ctx.moveTo(x0, y0); ctx.lineTo(x0 + rulerPx, y0)
+  ctx.stroke()
+
+  // End ticks
+  ctx.beginPath()
+  ctx.moveTo(x0, y0 - 5);            ctx.lineTo(x0, y0 + 5)
+  ctx.moveTo(x0 + rulerPx, y0 - 5); ctx.lineTo(x0 + rulerPx, y0 + 5)
+  ctx.stroke()
+
+  // Label
+  const label = rulerUnits === 1
+    ? `1 ${unitSymbol}`
+    : `${rulerUnits} ${unitSymbol}`
+  ctx.fillStyle = '#444'
+  ctx.font = '10px sans-serif'
+  ctx.textAlign = 'center'
+  ctx.fillText(label, x0 + rulerPx / 2, y0 - 7)
+  ctx.textAlign = 'left'  // reset
+}
+
+function drawWorld(canvas: HTMLCanvasElement, world: World, scale: PhysicsScale): void {
   const ctx = canvas.getContext('2d')!
   ctx.clearRect(0, 0, canvas.width, canvas.height)
 
@@ -72,10 +130,15 @@ function drawWorld(canvas: HTMLCanvasElement, world: World): void {
       ctx.fill()
     }
   }
+
+  // Scale ruler overlay
+  drawScaleRuler(ctx, scale)
 }
 
-export function WorldCanvas({ world, recorder, interaction }: Props) {
+export function WorldCanvas({ world, recorder, interaction, scale = DEFAULT_SCALE }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const scaleRef  = useRef<PhysicsScale>(scale)
+  scaleRef.current = scale  // always up-to-date inside the rAF loop
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -96,7 +159,7 @@ export function WorldCanvas({ world, recorder, interaction }: Props) {
         if (b) recorder.record(world.time, b.x, FLOOR_Y - b.y, b.vx, -b.vy, b.ax, -b.ay)
       }
 
-      drawWorld(canvas, world)
+      drawWorld(canvas, world, scaleRef.current)
       rafId = requestAnimationFrame(loop)
     }
 

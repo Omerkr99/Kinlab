@@ -8,14 +8,25 @@ import { AxisSelector } from './components/AxisSelector'
 import { GravitySlider } from './components/GravitySlider'
 import { DataTable } from './components/DataTable'
 import { CsvExportButton } from './components/CsvExportButton'
+import { ScaleControl } from './components/ScaleControl'
 import { Day3Panel } from './components/Day3Panel'
 import { GraphPopup } from './components/GraphPopup'
+import {
+  PhysicsScale, DEFAULT_SCALE,
+  gravityMs2ToEngine, gravityEngineToDisplay,
+} from './units/PhysicsScale'
 
 // ⚠️ OUTSIDE component — stable refs, never recreated on render
 const world       = new World()
 world.addBody(new Body({ x: 300, y: 50 }))
 const recorder    = new DataRecorder()
 const interaction = new InteractionLayer()
+
+/** Convert engine gravity (px/s²) to SI (m/s²) given a calibrated scale. */
+function engineToMs2(enginePxS2: number, s: PhysicsScale): number {
+  if (s.metersPerUnit == null) return enginePxS2   // px mode: treat as m/s² directly
+  return enginePxS2 * s.metersPerUnit / s.pixelsPerUnit
+}
 
 export default function App() {
   // ── Popup mode: render standalone graph window ────────────────────────────
@@ -26,11 +37,28 @@ export default function App() {
   const [xKey,    setXKey]    = useState<SeriesKey>('time')
   const [yKey,    setYKey]    = useState<SeriesKey>('y')
   const [flipY,   setFlipY]   = useState(false)
-  const [gravity, setGravity] = useState(world.gravity)   // KAN-45
+  const [gravity, setGravity] = useState(world.gravity)   // engine px/s²
+  const [scale,   setScale]   = useState<PhysicsScale>(DEFAULT_SCALE)
 
-  const handleGravity = (g: number) => {
-    world.gravity = g   // direct mutation — World reads this every step()
-    setGravity(g)       // update slider display
+  /** Update engine gravity and sync slider display. */
+  const handleGravity = (enginePxS2: number) => {
+    world.gravity = enginePxS2
+    setGravity(enginePxS2)
+  }
+
+  /**
+   * Change unit scale.
+   *
+   * Preserves the physical meaning of gravity across the switch:
+   *   current engine value → SI m/s² → new engine value
+   * So if user had Earth (9.8 m/s²) in any mode, it stays Earth after switching.
+   */
+  const handleScaleChange = (newScale: PhysicsScale) => {
+    const ms2       = engineToMs2(gravity, scale)
+    const newEngine = gravityMs2ToEngine(ms2, newScale)
+    world.gravity   = newEngine
+    setGravity(newEngine)
+    setScale(newScale)
   }
 
   // ── BroadcastChannel: stream recorder data to popup graph window ──────────
@@ -67,13 +95,18 @@ export default function App() {
     <div style={{ fontFamily: 'system-ui, sans-serif', background: '#f5f6f8', minHeight: '100vh', padding: 24 }}>
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 16 }}>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#1a1a2e' }}>
           🔬 KinLab
         </h1>
         <p style={{ margin: '4px 0 0', fontSize: 13, color: '#666' }}>
           Interactive Physics Simulation — drag the ball, record data, analyze graphs
         </p>
+      </div>
+
+      {/* ── Scale selector (global, affects all display components) ────── */}
+      <div style={{ marginBottom: 16 }}>
+        <ScaleControl scale={scale} onChange={handleScaleChange} />
       </div>
 
       {/* ── Main layout ────────────────────────────────────────────────── */}
@@ -85,10 +118,10 @@ export default function App() {
             Simulation
           </div>
           <ControlBar world={world} recorder={recorder} interaction={interaction} />
-          <WorldCanvas world={world} recorder={recorder} interaction={interaction} />
+          <WorldCanvas world={world} recorder={recorder} interaction={interaction} scale={scale} />
 
-          {/* KAN-45: gravity slider */}
-          <GravitySlider value={gravity} onChange={handleGravity} />
+          {/* KAN-45: gravity slider — scale-aware */}
+          <GravitySlider value={gravity} onChange={handleGravity} scale={scale} />
 
           <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
             Press ▶ Play to start · Drag ball to reposition · Adjust gravity live
@@ -103,20 +136,20 @@ export default function App() {
 
           {/* Axis selectors + CSV export */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <AxisSelector xKey={xKey} yKey={yKey} onXChange={setXKey} onYChange={setYKey} />
+            <AxisSelector xKey={xKey} yKey={yKey} onXChange={setXKey} onYChange={setYKey} scale={scale} />
             {/* KAN-44: CSV export */}
-            <CsvExportButton recorder={recorder} />
+            <CsvExportButton recorder={recorder} scale={scale} />
           </div>
 
           {/* KAN-41 indicator lives inside ControlBar; graph has ↑↓ arrows + ⤢ pop-out */}
-          <GraphCanvas recorder={recorder} xKey={xKey} yKey={yKey} flipY={flipY} onFlipY={setFlipY} />
+          <GraphCanvas recorder={recorder} xKey={xKey} yKey={yKey} flipY={flipY} onFlipY={setFlipY} scale={scale} />
 
           <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
             Updates live · ↑↓ flip Y direction · ⤢ pop-out for a dedicated graph window · ⬇ CSV
           </div>
 
           {/* KAN-43: data table (collapsible) */}
-          <DataTable recorder={recorder} />
+          <DataTable recorder={recorder} scale={scale} />
         </div>
       </div>
 

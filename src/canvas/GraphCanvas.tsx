@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { DataRecorder, SeriesKey } from '../recorder'
 import { GraphEngine } from '../graph/GraphEngine'
+import { PhysicsScale, DEFAULT_SCALE } from '../units/PhysicsScale'
 
 interface Props {
   recorder: DataRecorder
@@ -8,6 +9,7 @@ interface Props {
   yKey:     SeriesKey
   flipY:    boolean
   onFlipY:  (v: boolean) => void
+  scale?:   PhysicsScale
 }
 
 const arrowBtn = (active: boolean): React.CSSProperties => ({
@@ -25,7 +27,7 @@ const arrowBtn = (active: boolean): React.CSSProperties => ({
   padding: 0,
 })
 
-export function GraphCanvas({ recorder, xKey, yKey, flipY, onFlipY }: Props) {
+export function GraphCanvas({ recorder, xKey, yKey, flipY, onFlipY, scale = DEFAULT_SCALE }: Props) {
   const canvasRef   = useRef<HTMLCanvasElement>(null)
   const engineRef   = useRef<GraphEngine | null>(null)
   const lastLenRef  = useRef<number>(-1)
@@ -36,17 +38,18 @@ export function GraphCanvas({ recorder, xKey, yKey, flipY, onFlipY }: Props) {
     lastLenRef.current = -1
   }, [])
 
-  useEffect(() => { lastLenRef.current = -1 }, [xKey, yKey, flipY])
+  // Reset cached length so the graph redraws immediately on any key/flip/scale change
+  useEffect(() => { lastLenRef.current = -1 }, [xKey, yKey, flipY, scale])
 
   useEffect(() => {
     const id = setInterval(() => {
       const currentLen = recorder.getLength()
       if (currentLen === lastLenRef.current) return
       lastLenRef.current = currentLen
-      engineRef.current?.draw(recorder, xKey, yKey, flipY)
+      engineRef.current?.draw(recorder, xKey, yKey, flipY, scale)
     }, 32)
     return () => clearInterval(id)
-  }, [recorder, xKey, yKey, flipY])
+  }, [recorder, xKey, yKey, flipY, scale])
 
   const handlePopout = () => {
     window.open(

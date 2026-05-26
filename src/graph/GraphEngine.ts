@@ -1,4 +1,12 @@
 import { DataRecorder, SeriesKey } from '../recorder'
+import { PhysicsScale, DEFAULT_SCALE, axisLabel } from '../units/PhysicsScale'
+
+// Small helper to format axis tick values compactly
+function fmtTick(v: number): string {
+  if (v === 0) return '0'
+  if (Math.abs(v) >= 1e4 || (Math.abs(v) < 0.01 && v !== 0)) return v.toExponential(1)
+  return Number(v.toFixed(2)).toString()
+}
 
 export class GraphEngine {
   private ctx: CanvasRenderingContext2D | null
@@ -11,20 +19,55 @@ export class GraphEngine {
     this.h = canvas.height
   }
 
-  /** flipY negates every Y value before drawing — lets you switch between
-   *  physical convention (↑+, default) and canvas convention (↓+). */
-  draw(recorder: DataRecorder, xKey: SeriesKey, yKey: SeriesKey, flipY = false): void {
+  /**
+   * Draw the graph.
+   *
+   * flipY  — negate every Y value (physical ↑+ vs canvas ↓+)
+   * scale  — unit calibration; converts px values to physical units before display.
+   *          When scale is DEFAULT_SCALE (px, ppu=1) no allocation is performed.
+   */
+  draw(
+    recorder: DataRecorder,
+    xKey: SeriesKey,
+    yKey: SeriesKey,
+    flipY  = false,
+    scale: PhysicsScale = DEFAULT_SCALE,
+  ): void {
     const ctx = this.ctx
     if (!ctx) return                     // guard: null in test environments
-    const xs = recorder.getSeries(xKey)
-    const raw = recorder.getSeries(yKey)
-    const ys = flipY ? raw.map(v => -v) : raw
-    if (xs.length < 2) return
+
+    const rawXs = recorder.getSeries(xKey)
+    const rawYs = recorder.getSeries(yKey)
+    if (rawXs.length < 2) return
+
+    // Convert to physical units.
+    // Avoid allocating new arrays for the common px/no-flip case.
+    const ppu        = scale.pixelsPerUnit
+    const needsXConv = xKey !== 'time' && ppu !== 1
+    const needsYConv = yKey !== 'time' && ppu !== 1
+
+    const xs: number[] = needsXConv
+      ? rawXs.map(v => v / ppu)
+      : rawXs as unknown as number[]
+
+    const rawYsFlipped: number[] = flipY
+      ? rawYs.map(v => -v)
+      : rawYs as unknown as number[]
+
+    const ys: number[] = needsYConv
+      ? rawYsFlipped.map(v => v / ppu)
+      : rawYsFlipped
+
+    // Compute min/max once — shared between drawAxes tick labels and drawData scaling
+    const xMin = xs.reduce((a, b) => Math.min(a, b), Infinity)
+    const xMax = xs.reduce((a, b) => Math.max(a, b), -Infinity)
+    const yMin = ys.reduce((a, b) => Math.min(a, b), Infinity)
+    const yMax = ys.reduce((a, b) => Math.max(a, b), -Infinity)
 
     ctx.clearRect(0, 0, this.w, this.h)
     this.drawGrid(ctx)
-    this.drawAxes(ctx, xKey, yKey)
-    this.drawData(ctx, xs, ys)
+    this.drawAxes(ctx, axisLabel(xKey, scale), axisLabel(yKey, scale), xMin, xMax, yMin, yMax)
+    this.drawData(ctx, xs, ys, xMin, xMax, yMin, yMax)
   }
 
   private drawGrid(ctx: CanvasRenderingContext2D): void {
@@ -39,26 +82,48 @@ export class GraphEngine {
     }
   }
 
-  private drawAxes(ctx: CanvasRenderingContext2D, xLabel: string, yLabel: string): void {
+  private drawAxes(
+    ctx: CanvasRenderingContext2D,
+    xLabel: string,
+    yLabel: string,
+    xMin: number,
+    xMax: number,
+    yMin: number,
+    yMax: number,
+  ): void {
     const { w, h } = this
     const pad = 40
     ctx.strokeStyle = '#444'; ctx.lineWidth = 1.5
     ctx.beginPath(); ctx.moveTo(pad, 10); ctx.lineTo(pad, h - pad); ctx.stroke()
     ctx.beginPath(); ctx.moveTo(pad, h - pad); ctx.lineTo(w - 10, h - pad); ctx.stroke()
-    ctx.fillStyle = '#444'; ctx.font = '12px sans-serif'
+
+    // Axis labels
+    ctx.fillStyle = '#444'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'
     ctx.fillText(xLabel, w / 2, h - 6)
     ctx.save(); ctx.translate(12, h / 2); ctx.rotate(-Math.PI / 2)
     ctx.fillText(yLabel, 0, 0); ctx.restore()
+
+    // Min / max tick annotations
+    ctx.font = '9px sans-serif'; ctx.fillStyle = '#aaa'
+    ctx.textAlign = 'left';  ctx.fillText(fmtTick(xMin), pad + 2, h - pad + 12)
+    ctx.textAlign = 'right'; ctx.fillText(fmtTick(xMax), w - 10,  h - pad + 12)
+    ctx.textAlign = 'right'
+    ctx.fillText(fmtTick(yMin), pad - 4, h - pad - 4)
+    ctx.fillText(fmtTick(yMax), pad - 4, 18)
+    ctx.textAlign = 'left'  // reset
   }
 
-  private drawData(ctx: CanvasRenderingContext2D, xs: number[], ys: number[]): void {
+  private drawData(
+    ctx: CanvasRenderingContext2D,
+    xs: number[],
+    ys: number[],
+    xMin: number,
+    xMax: number,
+    yMin: number,
+    yMax: number,
+  ): void {
     const { w, h } = this
     const pad = 40
-    // KAN-34: reduce instead of spread — no stack overflow beyond 65k elements
-    const xMin = xs.reduce((a, b) => Math.min(a, b), Infinity)
-    const xMax = xs.reduce((a, b) => Math.max(a, b), -Infinity)
-    const yMin = ys.reduce((a, b) => Math.min(a, b), Infinity)
-    const yMax = ys.reduce((a, b) => Math.max(a, b), -Infinity)
     const xRange = xMax - xMin || 1
     const yRange = yMax - yMin || 1
     const cx = (v: number) => pad + ((v - xMin) / xRange) * (w - pad - 10)

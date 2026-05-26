@@ -1,23 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
 import { DataRecorder } from '../recorder'
+import {
+  PhysicsScale, DEFAULT_SCALE, pxToUnit, fmtUnit,
+  distUnit, velUnit, accelUnit,
+} from '../units/PhysicsScale'
 
-interface Props { recorder: DataRecorder }
+interface Props {
+  recorder: DataRecorder
+  scale?:   PhysicsScale
+}
 
 type Row = [number, number, number, number, number, number, number]
 
-const COLS = ['t (s)', 'x', 'y', 'vx', 'vy', 'ax', 'ay'] as const
 const MAX_ROWS = 150   // cap visible rows to keep DOM small
 
-const fmt = (n: number) => {
-  if (n === 0) return '0'
-  if (Math.abs(n) >= 1000 || (Math.abs(n) < 0.001 && n !== 0)) return n.toExponential(2)
-  return n.toFixed(3)
-}
-
-export function DataTable({ recorder }: Props) {
+export function DataTable({ recorder, scale = DEFAULT_SCALE }: Props) {
   const [rows,    setRows]    = useState<Row[]>([])
   const [visible, setVisible] = useState(true)
   const tbodyRef = useRef<HTMLTableSectionElement>(null)
+
+  const ppu = scale.pixelsPerUnit
+  const d   = distUnit(scale)
+  const v   = velUnit(scale)
+  const a   = accelUnit(scale)
+  const COLS = [`t (s)`, `x (${d})`, `y (${d})`, `vx (${v})`, `vy (${v})`, `ax (${a})`, `ay (${a})`] as const
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -33,11 +39,19 @@ export function DataTable({ recorder }: Props) {
       const start = Math.max(0, n - MAX_ROWS)
       const next: Row[] = []
       for (let i = start; i < n; i++)
-        next.push([t[i], x[i], y[i], vx[i], vy[i], ax[i], ay[i]])
+        next.push([
+          t[i],
+          pxToUnit(x[i],  scale),
+          pxToUnit(y[i],  scale),
+          pxToUnit(vx[i], scale),
+          pxToUnit(vy[i], scale),
+          pxToUnit(ax[i], scale),
+          pxToUnit(ay[i], scale),
+        ])
       setRows(next)
     }, 250)   // 4 fps — enough to feel live without hammering React
     return () => clearInterval(id)
-  }, [recorder])
+  }, [recorder, ppu])  // re-run when scale changes (ppu is a proxy for scale identity)
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -89,7 +103,9 @@ export function DataTable({ recorder }: Props) {
                 <tbody ref={tbodyRef}>
                   {rows.map((row, i) => (
                     <tr key={i} style={{ background: i % 2 === 0 ? '#f9f9fb' : '#fff' }}>
-                      {row.map((v, j) => <td key={j} style={tdStyle}>{fmt(v)}</td>)}
+                      {row.map((val, j) => (
+                        <td key={j} style={tdStyle}>{fmtUnit(val)}</td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
