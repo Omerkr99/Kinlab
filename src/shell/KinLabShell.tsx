@@ -352,6 +352,15 @@ export function KinLabShell({
     world.gravity = gravityEnabled ? gravity : 0
   }, [gravityEnabled, gravity, world])
 
+  // KAN-100: Sync environment settings → physics engine
+  // Runs whenever floor/walls/friction/restitution UI controls change.
+  useEffect(() => {
+    world.floorEnabled    = environment.floor
+    world.wallsEnabled    = environment.walls
+    world.floorFriction   = 1 - environment.friction      // UI: 0=no friction; engine: 1=no friction
+    world.floorRestitution = environment.restitution
+  }, [environment, world])
+
   // Auto-select body 0 when simulation starts
   useEffect(() => {
     if (playState === 'running' && selectedBody === null && world.bodies.length > 0) {
@@ -367,6 +376,8 @@ export function KinLabShell({
 
   const handleBodyDelete = useCallback((idx: number) => {
     world.bodies.splice(idx, 1)
+    // KAN-109: disable collision detection when only 1 body remains
+    world.collisionDetection = world.bodies.length > 1
     setSelectedBody(null)
   }, [world])
 

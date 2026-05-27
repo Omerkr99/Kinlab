@@ -7,14 +7,31 @@ import { CircleCollision }      from './collisions/CircleCollision'
 import { CollisionResolver }    from './collisions/CollisionResolver'
 
 const MAX_DT         = 0.016
-const DAMPING        = 0.7    // floor bounce energy retention
-const FRICTION       = 0.85   // floor horizontal friction
 const VELOCITY_CLAMP = 0.2    // must be > GRAVITY*MAX_DT (9.8*0.016=0.157)
 
 export class World {
   bodies:  Body[]  = []
   time     = 0
   gravity  = GRAVITY   // KAN-45: mutable — gravity slider writes here at runtime
+
+  // ── KAN-100: Environment controls (wired from EnvironmentSettings UI) ────────
+  /** Whether the floor boundary is active. false → bodies fall through. */
+  floorEnabled   = true
+  /** Whether the left/right wall boundaries are active. false → bodies exit canvas. */
+  wallsEnabled   = true
+  /**
+   * Floor coefficient of restitution (0–1). 0 = no bounce, 1 = perfectly elastic.
+   * Default 0.80 matches EnvironmentSettings default restitution: 0.80.
+   * Previously a hardcoded constant DAMPING = 0.7; now user-controllable.
+   */
+  floorRestitution = 0.80
+  /**
+   * Floor horizontal friction multiplier applied to vx on bounce (0–1).
+   * 1 = no friction, 0 = full stop.
+   * Default 0.80 = 1 − 0.20 (EnvironmentSettings default friction: 0.20).
+   * Previously a hardcoded constant FRICTION = 0.85; now user-controllable.
+   */
+  floorFriction  = 0.80
 
   // ── Day 9 additions ─────────────────────────────────────────────────────────
   /** Pluggable force strategies. Empty by default → legacy path runs unchanged. */
@@ -91,12 +108,12 @@ export class World {
         b.x  += b.vx * safeDt
         b.y  += b.vy * safeDt
 
-        // ── Floor collision ─────────────────────────────────────────────────
-        if (b.y >= FLOOR_Y) {
+        // ── Floor collision (KAN-100: gated by floorEnabled) ───────────────
+        if (this.floorEnabled && b.y >= FLOOR_Y) {
           const vyBefore = b.vy
           b.y  = FLOOR_Y
-          b.vy = -b.vy * DAMPING
-          b.vx *= FRICTION
+          b.vy = -b.vy * this.floorRestitution
+          b.vx *= this.floorFriction
           if (this.bus) {
             this.bus.emit({
               type: 'floor-bounce', bodyIndex: bi, time: this.time,
@@ -106,33 +123,35 @@ export class World {
           }
         }
 
-        // ── Wall collisions (KAN-42) ────────────────────────────────────────
-        if (b.x < WALL_L) {
-          b.x  = WALL_L
-          if (b.vx < 0) {
-            b.vx = -b.vx * WALL_DAMPING
-            if (this.bus) {
-              this.bus.emit({
-                type: 'wall-bounce', bodyIndex: bi, time: this.time,
-                x: b.x, y: b.y, vx: b.vx, vy: b.vy,
-              })
+        // ── Wall collisions (KAN-100: gated by wallsEnabled) ───────────────
+        if (this.wallsEnabled) {
+          if (b.x < WALL_L) {
+            b.x  = WALL_L
+            if (b.vx < 0) {
+              b.vx = -b.vx * WALL_DAMPING
+              if (this.bus) {
+                this.bus.emit({
+                  type: 'wall-bounce', bodyIndex: bi, time: this.time,
+                  x: b.x, y: b.y, vx: b.vx, vy: b.vy,
+                })
+              }
             }
-          }
-        } else if (b.x > WALL_R) {
-          b.x  = WALL_R
-          if (b.vx > 0) {
-            b.vx = -b.vx * WALL_DAMPING
-            if (this.bus) {
-              this.bus.emit({
-                type: 'wall-bounce', bodyIndex: bi, time: this.time,
-                x: b.x, y: b.y, vx: b.vx, vy: b.vy,
-              })
+          } else if (b.x > WALL_R) {
+            b.x  = WALL_R
+            if (b.vx > 0) {
+              b.vx = -b.vx * WALL_DAMPING
+              if (this.bus) {
+                this.bus.emit({
+                  type: 'wall-bounce', bodyIndex: bi, time: this.time,
+                  x: b.x, y: b.y, vx: b.vx, vy: b.vy,
+                })
+              }
             }
           }
         }
 
         // ── Velocity clamping — prevents infinite micro-bouncing ─────────────
-        if (Math.abs(b.vy) < VELOCITY_CLAMP && b.y >= FLOOR_Y) {
+        if (this.floorEnabled && Math.abs(b.vy) < VELOCITY_CLAMP && b.y >= FLOOR_Y) {
           b.vy = 0
           b.vx = 0
           b.ay = 0
@@ -179,18 +198,18 @@ export class World {
         b.omega += b.alpha * safeDt
         b.angle += b.omega * safeDt
 
-        // Phase 5: Floor collision + emit
-        if (b.y >= FLOOR_Y) {
-          const bi      = this.bodies.indexOf(b)
+        // Phase 5: Floor collision + emit (KAN-100: gated by floorEnabled)
+        if (this.floorEnabled && b.y >= FLOOR_Y) {
+          const bIdx     = this.bodies.indexOf(b)
           const vyBefore = b.vy   // velocity just before correction (post-integration)
           b.y  = FLOOR_Y
-          b.vy = -b.vy * DAMPING
-          b.vx *= FRICTION
+          b.vy = -b.vy * this.floorRestitution
+          b.vx *= this.floorFriction
 
           if (this.bus) {
             this.bus.emit({
               type:      'floor-bounce',
-              bodyIndex: bi,
+              bodyIndex: bIdx,
               time:      this.time,
               x:         b.x,
               y:         b.y,
@@ -202,33 +221,35 @@ export class World {
           }
         }
 
-        // Phase 6: Wall collisions + emit
-        if (b.x < WALL_L) {
-          b.x = WALL_L
-          if (b.vx < 0) {
-            b.vx = -b.vx * WALL_DAMPING
-            if (this.bus) {
-              this.bus.emit({
-                type: 'wall-bounce', bodyIndex: this.bodies.indexOf(b),
-                time: this.time, x: b.x, y: b.y, vx: b.vx, vy: b.vy,
-              })
+        // Phase 6: Wall collisions + emit (KAN-100: gated by wallsEnabled)
+        if (this.wallsEnabled) {
+          if (b.x < WALL_L) {
+            b.x = WALL_L
+            if (b.vx < 0) {
+              b.vx = -b.vx * WALL_DAMPING
+              if (this.bus) {
+                this.bus.emit({
+                  type: 'wall-bounce', bodyIndex: this.bodies.indexOf(b),
+                  time: this.time, x: b.x, y: b.y, vx: b.vx, vy: b.vy,
+                })
+              }
             }
-          }
-        } else if (b.x > WALL_R) {
-          b.x = WALL_R
-          if (b.vx > 0) {
-            b.vx = -b.vx * WALL_DAMPING
-            if (this.bus) {
-              this.bus.emit({
-                type: 'wall-bounce', bodyIndex: this.bodies.indexOf(b),
-                time: this.time, x: b.x, y: b.y, vx: b.vx, vy: b.vy,
-              })
+          } else if (b.x > WALL_R) {
+            b.x = WALL_R
+            if (b.vx > 0) {
+              b.vx = -b.vx * WALL_DAMPING
+              if (this.bus) {
+                this.bus.emit({
+                  type: 'wall-bounce', bodyIndex: this.bodies.indexOf(b),
+                  time: this.time, x: b.x, y: b.y, vx: b.vx, vy: b.vy,
+                })
+              }
             }
           }
         }
 
-        // Phase 7: Velocity clamping + emit rest
-        if (Math.abs(b.vy) < VELOCITY_CLAMP && b.y >= FLOOR_Y) {
+        // Phase 7: Velocity clamping + emit rest (KAN-100: only when floor active)
+        if (this.floorEnabled && Math.abs(b.vy) < VELOCITY_CLAMP && b.y >= FLOOR_Y) {
           b.vy = 0
           b.vx = 0
           b.ay = 0
