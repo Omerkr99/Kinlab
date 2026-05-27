@@ -59,12 +59,33 @@ const SHELL_CSS = `
 
 /* Dark mode overrides */
 [data-theme="dark"] {
-  --kl-bg-canvas:     #1F2937;
-  --kl-bg-app:        #111827;
+  --kl-primary-light: #1E3A5F;
+  --kl-bg-canvas:     #111827;
+  --kl-bg-app:        #0F172A;
   --kl-bg-surface:    #1F2937;
   --kl-border:        #374151;
   --kl-text-primary:  #F9FAFB;
   --kl-text-secondary:#9CA3AF;
+}
+
+/* Dark mode — shell panel backgrounds */
+[data-theme="dark"] .kl-panel {
+  background: var(--kl-bg-surface) !important;
+  border-color: var(--kl-border) !important;
+  color: var(--kl-text-primary) !important;
+}
+[data-theme="dark"] .kl-input {
+  background: #374151 !important;
+  border-color: #4B5563 !important;
+  color: var(--kl-text-primary) !important;
+}
+[data-theme="dark"] .kl-btn-ghost:hover {
+  background: #374151 !important;
+}
+
+/* Smooth theme transition on key elements */
+body, header, main, aside, footer, section, nav {
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.15s ease;
 }
 
 /* ── Base resets ──────────────────────────────────────────────────────── */
@@ -88,6 +109,14 @@ body {
 @keyframes kl-pulse {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.3; }
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes toastProgress {
+  from { width: 100%; }
+  to   { width: 0%; }
 }
 @keyframes kl-fadeIn {
   from { opacity: 0; transform: translateY(4px); }
