@@ -10,6 +10,11 @@ interface Props {
   recorder:       DataRecorder
   interaction:    InteractionLayer
   scale?:         PhysicsScale
+  /**
+   * Simulation speed multiplier. 1 = real-time, 2 = 2× faster, 0.5 = half speed.
+   * Applied via ref so changes never restart the rAF loop. [KAN-92]
+   */
+  simSpeed?:      number
   /** Called when the user clicks a body (index) or the background (null) */
   onBodySelect?:  (index: number | null) => void
 }
@@ -137,10 +142,17 @@ function drawWorld(canvas: HTMLCanvasElement, world: World, scale: PhysicsScale)
   drawScaleRuler(ctx, scale)
 }
 
-export function WorldCanvas({ world, recorder, interaction, scale = DEFAULT_SCALE, onBodySelect }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const scaleRef  = useRef<PhysicsScale>(scale)
-  scaleRef.current = scale  // always up-to-date inside the rAF loop
+export function WorldCanvas({
+  world, recorder, interaction,
+  scale = DEFAULT_SCALE,
+  simSpeed = 1,
+  onBodySelect,
+}: Props) {
+  const canvasRef   = useRef<HTMLCanvasElement>(null)
+  const scaleRef    = useRef<PhysicsScale>(scale)
+  const simSpeedRef = useRef<number>(simSpeed)
+  scaleRef.current    = scale     // always up-to-date inside the rAF loop
+  simSpeedRef.current = simSpeed  // updated via ref — never restarts the loop [KAN-92]
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -150,7 +162,9 @@ export function WorldCanvas({ world, recorder, interaction, scale = DEFAULT_SCAL
     let lastTime = performance.now()
 
     const loop = (now: number) => {
-      const dt = Math.min((now - lastTime) / 1000, 0.016)
+      // Clamp raw dt to 32 ms (≈ 30 fps min) to avoid instability on tab focus
+      const rawDt  = Math.min((now - lastTime) / 1000, 0.032)
+      const dt     = rawDt * simSpeedRef.current
       lastTime = now
 
       if (!interaction.isPaused() && !interaction.isDragging()) {

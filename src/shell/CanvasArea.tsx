@@ -7,6 +7,7 @@
  *  - Hosts the WorldCanvas component (slot pattern)
  *  - Fires onCursorMove(canvasX, canvasY) for StatusBar coordinate display
  *  - aria-label on the canvas region
+ *  - [KAN-90] zoom: CSS transform:scale on canvas wrapper, corrects cursor coords
  *
  * Does NOT render canvas drawing or simulation — that lives in WorldCanvas.
  */
@@ -17,16 +18,26 @@ import type { CursorPos } from './shellTypes'
 
 interface CanvasAreaProps {
   /** The WorldCanvas element (rendered by App, passed as a child slot) */
-  children:     React.ReactNode
-  scale?:       PhysicsScale
+  children:      React.ReactNode
+  scale?:        PhysicsScale
+  /** 1 = 100%, 0.5 = 50%, 2 = 200% — applied as CSS transform:scale */
+  zoom?:         number
   onCursorMove?: (pos: CursorPos | null) => void
-  style?:       CSSProperties
+  style?:        CSSProperties
 }
 
-export function CanvasArea({ children, scale = DEFAULT_SCALE, onCursorMove, style }: CanvasAreaProps) {
+export function CanvasArea({
+  children,
+  scale = DEFAULT_SCALE,
+  zoom  = 1,
+  onCursorMove,
+  style,
+}: CanvasAreaProps) {
   const [coord, setCoord] = useState<{ x: number; y: number; sym?: string } | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
 
+  // Convert raw canvas pixel position → physical units
+  // When zoom != 1 we must divide offset by zoom so coords stay correct
   const toPhysical = (canvasX: number, canvasY: number) => {
     const ppu = scale.pixelsPerUnit
     const sym = scale.unitSymbol
@@ -36,12 +47,6 @@ export function CanvasArea({ children, scale = DEFAULT_SCALE, onCursorMove, styl
   }
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Find canvas position relative to the wrapper
-    const rect = wrapRef.current?.getBoundingClientRect()
-    if (!rect) return
-    // The WorldCanvas is centered inside the wrapper
-    // We need the position relative to the canvas element itself.
-    // Use e.target to check if we're on the canvas:
     const target = e.target as HTMLElement
     if (target.tagName !== 'CANVAS') {
       setCoord(null)
@@ -49,8 +54,9 @@ export function CanvasArea({ children, scale = DEFAULT_SCALE, onCursorMove, styl
       return
     }
     const canvasRect = target.getBoundingClientRect()
-    const cx = e.clientX - canvasRect.left
-    const cy = e.clientY - canvasRect.top
+    // Divide by zoom to convert from screen pixels → canvas pixels
+    const cx = (e.clientX - canvasRect.left)  / zoom
+    const cy = (e.clientY - canvasRect.top)   / zoom
     const phys = toPhysical(cx, cy)
     setCoord({ x: phys.x, y: phys.y, sym: phys.sym })
     onCursorMove?.({ canvasX: cx, canvasY: cy })
@@ -74,9 +80,8 @@ export function CanvasArea({ children, scale = DEFAULT_SCALE, onCursorMove, styl
         flex:           1,
         overflow:       'hidden',
         position:       'relative',
-        background:     '#F3F4F6',
-        // Dot-grid overlay — fine 20px grid
-        backgroundImage: 'radial-gradient(circle, #D1D5DB 1px, transparent 1px)',
+        background:     'var(--kl-bg-canvas, #F3F4F6)',
+        backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.12) 1px, transparent 1px)',
         backgroundSize:  '20px 20px',
         display:        'flex',
         alignItems:     'center',
@@ -85,29 +90,62 @@ export function CanvasArea({ children, scale = DEFAULT_SCALE, onCursorMove, styl
         ...style,
       }}
     >
-      {/* Canvas slot */}
-      {children}
+      {/* Canvas slot — zoom applied here via CSS transform */}
+      <div
+        style={{
+          transform:       `scale(${zoom})`,
+          transformOrigin: 'center center',
+          transition:      'transform 0.15s ease',
+          display:         'flex',
+          alignItems:      'center',
+          justifyContent:  'center',
+        }}
+      >
+        {children}
+      </div>
 
       {/* Coordinate readout — top-left corner */}
       {coord && (
         <div
           aria-live="off"
           style={{
-            position:   'absolute',
-            top:        8,
-            left:       8,
-            padding:    '3px 7px',
-            background: 'rgba(255,255,255,0.88)',
-            border:     '1px solid #E5E7EB',
-            borderRadius: 4,
-            fontSize:   11,
-            fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-            color:      '#6B7280',
+            position:      'absolute',
+            top:           8,
+            left:          8,
+            padding:       '3px 7px',
+            background:    'rgba(255,255,255,0.88)',
+            border:        '1px solid #E5E7EB',
+            borderRadius:  4,
+            fontSize:      11,
+            fontFamily:    '"JetBrains Mono", "Fira Code", monospace',
+            color:         '#6B7280',
             pointerEvents: 'none',
-            userSelect: 'none',
+            userSelect:    'none',
           }}
         >
           ({fmt(coord.x)}, {fmt(coord.y)}) {coord.sym ?? 'px'}
+        </div>
+      )}
+
+      {/* Zoom badge — bottom-right corner */}
+      {zoom !== 1 && (
+        <div
+          aria-label={`Zoom: ${Math.round(zoom * 100)}%`}
+          style={{
+            position:      'absolute',
+            bottom:        8,
+            right:         8,
+            padding:       '2px 6px',
+            background:    'rgba(0,0,0,0.55)',
+            borderRadius:  4,
+            fontSize:      10,
+            fontFamily:    'monospace',
+            color:         '#E5E7EB',
+            pointerEvents: 'none',
+            userSelect:    'none',
+          }}
+        >
+          {Math.round(zoom * 100)}%
         </div>
       )}
     </div>
