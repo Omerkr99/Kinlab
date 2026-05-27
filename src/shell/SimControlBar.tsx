@@ -38,6 +38,8 @@ interface SimControlBarProps {
   onGridEnabled:  (v: boolean) => void
   snapEnabled:    boolean
   onSnapEnabled:  (v: boolean) => void
+  /** Called after a full simulation reset (for toast / side-effects) */
+  onAfterReset?:  () => void
 }
 
 // ── Control button ────────────────────────────────────────────────────────────
@@ -114,6 +116,7 @@ export function SimControlBar({
   gravityEnabled, onGravityEnabled,
   gridEnabled,    onGridEnabled,
   snapEnabled,    onSnapEnabled,
+  onAfterReset,
 }: SimControlBarProps) {
 
   // Poll world.time every 80ms for the time display
@@ -139,6 +142,7 @@ export function SimControlBar({
     recorder.reset()
     resetBall(world)
     onPlayStateChange('idle')
+    onAfterReset?.()
   }
 
   return (
