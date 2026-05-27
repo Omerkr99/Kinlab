@@ -72,11 +72,12 @@ export class World {
 
     const hasForces = this.forces.length > 0
 
-    for (const b of this.bodies) {
+    for (let bi = 0; bi < this.bodies.length; bi++) {
+      const b = this.bodies[bi]
 
       if (!hasForces) {
         // ══════════════════════════════════════════════════════════════════════
-        // LEGACY PATH — bit-identical to Days 1-8, zero behavior change.
+        // LEGACY PATH — same physics as Days 1-8, now with event emission.
         // Runs whenever world.forces is empty (the default).
         // ══════════════════════════════════════════════════════════════════════
 
@@ -92,18 +93,42 @@ export class World {
 
         // ── Floor collision ─────────────────────────────────────────────────
         if (b.y >= FLOOR_Y) {
+          const vyBefore = b.vy
           b.y  = FLOOR_Y
           b.vy = -b.vy * DAMPING
           b.vx *= FRICTION
+          if (this.bus) {
+            this.bus.emit({
+              type: 'floor-bounce', bodyIndex: bi, time: this.time,
+              x: b.x, y: b.y, vx: b.vx, vy: b.vy,
+              impulse: Math.abs(b.vy - vyBefore) * b.mass,
+            })
+          }
         }
 
         // ── Wall collisions (KAN-42) ────────────────────────────────────────
         if (b.x < WALL_L) {
           b.x  = WALL_L
-          if (b.vx < 0) b.vx = -b.vx * WALL_DAMPING
+          if (b.vx < 0) {
+            b.vx = -b.vx * WALL_DAMPING
+            if (this.bus) {
+              this.bus.emit({
+                type: 'wall-bounce', bodyIndex: bi, time: this.time,
+                x: b.x, y: b.y, vx: b.vx, vy: b.vy,
+              })
+            }
+          }
         } else if (b.x > WALL_R) {
           b.x  = WALL_R
-          if (b.vx > 0) b.vx = -b.vx * WALL_DAMPING
+          if (b.vx > 0) {
+            b.vx = -b.vx * WALL_DAMPING
+            if (this.bus) {
+              this.bus.emit({
+                type: 'wall-bounce', bodyIndex: bi, time: this.time,
+                x: b.x, y: b.y, vx: b.vx, vy: b.vy,
+              })
+            }
+          }
         }
 
         // ── Velocity clamping — prevents infinite micro-bouncing ─────────────
@@ -111,6 +136,12 @@ export class World {
           b.vy = 0
           b.vx = 0
           b.ay = 0
+          if (this.bus) {
+            this.bus.emit({
+              type: 'rest', bodyIndex: bi, time: this.time,
+              x: b.x, y: b.y,
+            })
+          }
         }
 
       } else {

@@ -346,6 +346,12 @@ export function KinLabShell({
   const [yKey, setYKey] = useState<SeriesKey>('y')
   const [flipY, setFlipY] = useState(false)
 
+  // Sync gravityEnabled toggle → physics engine
+  // When disabled, world.gravity is zeroed; when re-enabled, the last gravity value is restored.
+  useEffect(() => {
+    world.gravity = gravityEnabled ? gravity : 0
+  }, [gravityEnabled, gravity, world])
+
   // Auto-select body 0 when simulation starts
   useEffect(() => {
     if (playState === 'running' && selectedBody === null && world.bodies.length > 0) {
