@@ -264,11 +264,20 @@ export function WorldCanvas({
     const loop = (now: number) => {
       // Clamp raw dt to 32 ms (≈ 30 fps min) to avoid instability on tab focus
       const rawDt  = Math.min((now - lastTime) / 1000, 0.032)
-      const dt     = rawDt * simSpeedRef.current
       lastTime = now
 
       if (!interaction.isPaused() && !interaction.isDragging()) {
-        world.step(dt)
+        // Multi-step: decompose total sim dt into ≤16 ms sub-steps so World's
+        // internal MAX_DT never clips and simSpeed > 1× actually runs faster.
+        // simSpeed = 0.5 → one step of 8 ms   (slow motion works unchanged)
+        // simSpeed = 2   → two steps of ~16 ms (2× real-time)
+        // simSpeed = 4   → four steps of ~16 ms
+        const totalSimDt = rawDt * simSpeedRef.current
+        const steps      = Math.max(1, Math.ceil(totalSimDt / 0.016))
+        const stepDt     = totalSimDt / steps
+        for (let s = 0; s < steps; s++) {
+          world.step(stepDt)
+        }
         const b = world.bodies[0]
         // Physical coordinate convention: floor = y=0, upward = positive.
         // Transform: y_phys = FLOOR_Y − canvas_y, vy_phys = −vy, ay_phys = −ay
