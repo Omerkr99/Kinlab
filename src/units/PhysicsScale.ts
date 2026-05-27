@@ -123,6 +123,7 @@ export function makeCustomScale(
 export const GRAVITY_PRESETS_MS2: Array<{ label: string; icon: string; ms2: number; title: string }> = [
   { label: '0',       icon: '🚀', ms2: 0,    title: 'Zero gravity'         },
   { label: 'Moon',    icon: '🌙', ms2: 1.6,  title: 'Moon  (1.6  m/s²)'   },
+  { label: 'Mars',    icon: '🔴', ms2: 3.7,  title: 'Mars  (3.7  m/s²)'   },
   { label: 'Earth',   icon: '🌍', ms2: 9.8,  title: 'Earth (9.8  m/s²)'   },
   { label: 'Jupiter', icon: '🪐', ms2: 24.8, title: 'Jupiter (24.8 m/s²)' },
 ]

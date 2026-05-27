@@ -9,6 +9,7 @@ import { useState } from 'react'
 import {
   PhysicsScale, SCALE_PRESETS, makeCustomScale, DEFAULT_SCALE,
 } from '../units/PhysicsScale'
+import { CANVAS_W, CANVAS_H } from '../constants'
 
 interface Props {
   scale:    PhysicsScale
@@ -102,8 +103,8 @@ export function ScaleControl({ scale, onChange }: Props) {
       {/* Current calibration summary */}
       <span style={{ fontSize: 10, color: '#aaa', marginLeft: 4, whiteSpace: 'nowrap' }}>
         {scale.id === 'px'
-          ? `canvas: ${600} × ${500} px`
-          : `canvas: ${(600 / scale.pixelsPerUnit).toFixed(1)} × ${(500 / scale.pixelsPerUnit).toFixed(1)} ${scale.unitSymbol}`}
+          ? `canvas: ${CANVAS_W} × ${CANVAS_H} px`
+          : `canvas: ${(CANVAS_W / scale.pixelsPerUnit).toFixed(1)} × ${(CANVAS_H / scale.pixelsPerUnit).toFixed(1)} ${scale.unitSymbol}`}
       </span>
 
       {/* Reset to default */}
