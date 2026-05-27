@@ -49,7 +49,7 @@ export class BodyFactory {
     const y      = spec.y      ?? DEFAULT_DROP_Y
     const mass   = spec.mass   ?? 1
     const radius = spec.radius ?? BALL_RADIUS
-    return new Body({
+    const b = new Body({
       x, y,
       vx: spec.vx ?? 0,
       vy: spec.vy ?? 0,
@@ -57,6 +57,33 @@ export class BodyFactory {
       radius,
       inertia: spec.inertia ?? (mass * radius * radius) / 2,
     })
+    b.type = 'Circle'
+    return b
+  }
+
+  /**
+   * Create a rectangle body — rendered as a square box in the canvas.
+   * Physics is identical to a circle of the same radius (bounding sphere).
+   *
+   * @param spec  Optional overrides.
+   * @param index Used to auto-stagger x when `spec.x` is omitted.
+   */
+  static rectangle(spec: BodySpec = {}, index = 0): Body {
+    const b = BodyFactory.circle(spec, index)
+    b.type = 'Rectangle'
+    return b
+  }
+
+  /**
+   * KAN-102: Dispatch to the correct factory method by ObjectType string.
+   * Unknown types fall back to circle so new types never break the UI.
+   */
+  static fromType(type: string, index = 0, spec: BodySpec = {}): Body {
+    switch (type) {
+      case 'rectangle':   return BodyFactory.rectangle(spec, index)
+      case 'circle':
+      default:            return BodyFactory.circle(spec, index)
+    }
   }
 
   /**

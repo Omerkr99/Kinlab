@@ -201,34 +201,67 @@ function drawWorld(
       }
     }
 
-    // Ball — use b.color (user-set) or fall back to per-body palette (KAN-107)
+    // ── Body fill colour (KAN-107: user colour overrides palette) ───────────────
     const r = b.radius ?? BALL_RADIUS
-    if (b.color) {
-      // Flat fill with user-chosen color; a subtle radial highlight keeps depth.
-      const gradient = ctx.createRadialGradient(b.x - r * 0.35, b.y - r * 0.35, r * 0.1, b.x, b.y, r)
-      gradient.addColorStop(0, b.color + 'cc')  // slightly transparent centre highlight
-      gradient.addColorStop(1, b.color)
-      ctx.fillStyle = gradient
-    } else {
-      const [light, dark] = BODY_PALETTE[bi % BODY_PALETTE.length]
-      const gradient = ctx.createRadialGradient(b.x - 6, b.y - 6, 2, b.x, b.y, r)
-      gradient.addColorStop(0, light)
-      gradient.addColorStop(1, dark)
-      ctx.fillStyle = gradient
-    }
-    ctx.beginPath()
-    ctx.arc(b.x, b.y, r, 0, Math.PI * 2)
-    ctx.fill()
+    const [palLight, palDark] = BODY_PALETTE[bi % BODY_PALETTE.length]
+    const fillLight = b.color ? b.color + 'cc' : palLight
+    const fillDark  = b.color ?? palDark
 
-    // Body index label (when multiple bodies) (KAN-97)
-    if (world.bodies.length > 1) {
-      ctx.fillStyle = 'rgba(255,255,255,0.9)'
-      ctx.font = `bold ${r < 16 ? 9 : 10}px sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(String(bi + 1), b.x, b.y + 1)
-      ctx.textBaseline = 'alphabetic'  // reset
-      ctx.textAlign = 'left'
+    // ── KAN-102: shape dispatch ───────────────────────────────────────────────
+    if (b.type === 'Rectangle') {
+      // Rectangle: axis-aligned box that rotates with b.angle.
+      // Uses radius as half-side so the bounding sphere matches the visual size.
+      ctx.save()
+      ctx.translate(b.x, b.y)
+      ctx.rotate(b.angle)
+      const half = r
+      const grad = ctx.createLinearGradient(-half, -half, half, half)
+      grad.addColorStop(0, fillLight)
+      grad.addColorStop(1, fillDark)
+      ctx.fillStyle   = grad
+      ctx.strokeStyle = fillDark
+      ctx.lineWidth   = 1.5
+      ctx.beginPath()
+      ctx.roundRect(-half, -half, half * 2, half * 2, 4)
+      ctx.fill()
+      ctx.stroke()
+      // Body index label
+      if (world.bodies.length > 1) {
+        ctx.fillStyle = 'rgba(255,255,255,0.9)'
+        ctx.font      = `bold ${r < 16 ? 9 : 10}px sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(String(bi + 1), 0, 1)
+        ctx.textBaseline = 'alphabetic'
+        ctx.textAlign    = 'left'
+      }
+      ctx.restore()
+    } else {
+      // Default: circle (covers 'Circle' and any unknown future types)
+      if (b.color) {
+        const gradient = ctx.createRadialGradient(b.x - r * 0.35, b.y - r * 0.35, r * 0.1, b.x, b.y, r)
+        gradient.addColorStop(0, fillLight)
+        gradient.addColorStop(1, fillDark)
+        ctx.fillStyle = gradient
+      } else {
+        const gradient = ctx.createRadialGradient(b.x - 6, b.y - 6, 2, b.x, b.y, r)
+        gradient.addColorStop(0, fillLight)
+        gradient.addColorStop(1, fillDark)
+        ctx.fillStyle = gradient
+      }
+      ctx.beginPath()
+      ctx.arc(b.x, b.y, r, 0, Math.PI * 2)
+      ctx.fill()
+      // Body index label (when multiple bodies) (KAN-97)
+      if (world.bodies.length > 1) {
+        ctx.fillStyle = 'rgba(255,255,255,0.9)'
+        ctx.font = `bold ${r < 16 ? 9 : 10}px sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(String(bi + 1), b.x, b.y + 1)
+        ctx.textBaseline = 'alphabetic'  // reset
+        ctx.textAlign = 'left'
+      }
     }
 
     // Velocity vector (FR-21) — per-body arrow color
