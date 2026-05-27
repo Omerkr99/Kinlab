@@ -13,6 +13,7 @@ import { InteractionLayer } from '../engine'
 import { FLOOR_Y, CANVAS_W, CANVAS_H, BALL_RADIUS } from '../constants'
 import { PhysicsScale, DEFAULT_SCALE } from '../units/PhysicsScale'
 import type { PhysicsEventBus } from '../engine/PhysicsEvents'
+import type { ActiveTool } from '../shell/shellTypes'
 
 // Per-body color palette — light/dark gradient stops for each body (KAN-97)
 const BODY_PALETTE: Array<[string, string]> = [
@@ -47,6 +48,17 @@ interface Props {
    * so single-body mode is unaffected. Updated via ref — never restarts the loop.
    */
   selectedBodyIndex?: number | null
+  /**
+   * KAN-101: active tool — drives mousedown/up dispatch behaviour.
+   * Updated via ref so changes never restart the rAF loop.
+   *   select  → click selects/deselects body (no drag)
+   *   move    → drag body with mouse (original behaviour)
+   *   force   → drag from body to apply an impulse kick on mouseup
+   *   delete  → click body to delete it
+   */
+  activeTool?:        ActiveTool
+  /** KAN-101: called when the delete tool removes a body */
+  onBodyDelete?:      (index: number) => void
 }
 
 const VEL_SCALE      = 5
@@ -247,6 +259,9 @@ function drawWorld(
   drawScaleRuler(ctx, scale)
 }
 
+/** Impulse scale for the force tool: px dragged × FORCE_SCALE = px/s velocity kick */
+const FORCE_SCALE = 8
+
 export function WorldCanvas({
   world, recorder, interaction,
   scale = DEFAULT_SCALE,
@@ -256,6 +271,8 @@ export function WorldCanvas({
   gridEnabled = false,
   snapEnabled = false,
   selectedBodyIndex,
+  activeTool = 'select',
+  onBodyDelete,
 }: Props) {
   const canvasRef           = useRef<HTMLCanvasElement>(null)
   const scaleRef            = useRef<PhysicsScale>(scale)
@@ -264,15 +281,36 @@ export function WorldCanvas({
   const snapEnabledRef      = useRef<boolean>(snapEnabled)
   /** KAN-104: ref so loop always reads the latest selected index without re-mounting */
   const selectedBodyIdxRef  = useRef<number | null | undefined>(selectedBodyIndex)
+  /** KAN-101: ref so mouse handlers always see the current tool without re-mounting */
+  const activeToolRef       = useRef<ActiveTool>(activeTool)
+  /** KAN-101: tracks force-tool drag origin {bi, x, y} */
+  const forceDragRef        = useRef<{ bi: number; x: number; y: number } | null>(null)
+  /** KAN-101: latest onBodyDelete callback (ref avoids stale closure) */
+  const onBodyDeleteRef     = useRef(onBodyDelete)
 
   // Flash map: bodyIndex → performance.now() when flash started (KAN-95)
   const flashMapRef = useRef<Map<number, number>>(new Map())
 
-  scaleRef.current          = scale           // always up-to-date inside the rAF loop
-  simSpeedRef.current       = simSpeed        // updated via ref — never restarts the loop [KAN-92]
-  gridEnabledRef.current    = gridEnabled     // ref-tracked so rAF loop sees latest value
-  snapEnabledRef.current    = snapEnabled
+  scaleRef.current           = scale           // always up-to-date inside the rAF loop
+  simSpeedRef.current        = simSpeed        // updated via ref — never restarts the loop [KAN-92]
+  gridEnabledRef.current     = gridEnabled     // ref-tracked so rAF loop sees latest value
+  snapEnabledRef.current     = snapEnabled
   selectedBodyIdxRef.current = selectedBodyIndex  // KAN-104: keep ref in sync each render
+  activeToolRef.current      = activeTool         // KAN-101
+  onBodyDeleteRef.current    = onBodyDelete        // KAN-101
+
+  // KAN-101: update canvas cursor when activeTool changes
+  useEffect(() => {
+    const el = canvasRef.current
+    if (!el) return
+    const cursors: Record<ActiveTool, string> = {
+      select: 'default',
+      move:   'grab',
+      force:  'crosshair',
+      delete: 'not-allowed',
+    }
+    el.style.cursor = cursors[activeTool]
+  }, [activeTool])
 
   // Subscribe to physics events for flash highlight (KAN-95)
   useEffect(() => {
@@ -342,21 +380,70 @@ export function WorldCanvas({
     const snap = (v: number) =>
       snapEnabledRef.current ? Math.round(v / GRID_SIZE) * GRID_SIZE : v
 
-    // Mouse events
+    // KAN-101: Tool-dispatched mouse handlers
+    const hitRadius = (b: typeof world.bodies[number]) =>
+      (b.radius ?? BALL_RADIUS) + 5   // generous hit area
+
     const onDown = (e: MouseEvent) => {
       const x = e.offsetX, y = e.offsetY
-      const b = world.bodies.find(b => Math.hypot(b.x - x, b.y - y) < BALL_RADIUS + 5)
-      if (b) {
-        interaction.startDrag(b)
-        onBodySelect?.(world.bodies.indexOf(b))
-      } else {
-        // Background click: deselect only — do NOT silently wipe the recording.
-        // Users reset data intentionally via the Reset button in SimControlBar.
-        onBodySelect?.(null)
+      const bi = world.bodies.findIndex(b => Math.hypot(b.x - x, b.y - y) < hitRadius(b))
+      const b  = bi !== -1 ? world.bodies[bi] : undefined
+      const tool = activeToolRef.current
+
+      if (tool === 'select') {
+        // Select/deselect — no drag
+        onBodySelect?.(b ? bi : null)
+
+      } else if (tool === 'move') {
+        // Drag the body
+        if (b) {
+          interaction.startDrag(b)
+          onBodySelect?.(bi)
+        }
+
+      } else if (tool === 'force') {
+        // Record origin for impulse kick on mouseup
+        if (b) {
+          forceDragRef.current = { bi, x, y }
+          onBodySelect?.(bi)
+        }
+
+      } else if (tool === 'delete') {
+        // Immediately delete the clicked body
+        if (b) {
+          onBodyDeleteRef.current?.(bi)
+        }
       }
     }
-    const onMove = (e: MouseEvent) => interaction.updateDrag(snap(e.offsetX), snap(e.offsetY))
-    const onUp = () => interaction.endDrag()
+
+    const onMove = (e: MouseEvent) => {
+      const tool = activeToolRef.current
+      if (tool === 'move') {
+        interaction.updateDrag(snap(e.offsetX), snap(e.offsetY))
+      }
+      // force tool could draw a vector here in a future enhancement
+    }
+
+    const onUp = (e: MouseEvent) => {
+      const tool = activeToolRef.current
+      if (tool === 'move') {
+        interaction.endDrag()
+      } else if (tool === 'force' && forceDragRef.current !== null) {
+        const { bi, x: ox, y: oy } = forceDragRef.current
+        const b = world.bodies[bi]
+        if (b) {
+          // Impulse direction: from drag origin toward current mouse position.
+          // Drag right → kick right; drag up → kick up.
+          const dx = e.offsetX - ox
+          const dy = e.offsetY - oy
+          b.vx += dx * FORCE_SCALE
+          b.vy += dy * FORCE_SCALE
+          // Wake body from rest so it actually moves
+          if (b.ay === 0 && b.vy === 0) b.ay = world.gravity
+        }
+        forceDragRef.current = null
+      }
+    }
 
     canvas.addEventListener('mousedown', onDown)
     canvas.addEventListener('mousemove', onMove)
@@ -375,7 +462,7 @@ export function WorldCanvas({
       ref={canvasRef}
       width={CANVAS_W}
       height={CANVAS_H}
-      style={{ border: '1px solid #ddd', borderRadius: 8, cursor: 'crosshair' }}
+      style={{ border: '1px solid #ddd', borderRadius: 8 }}
     />
   )
 }
