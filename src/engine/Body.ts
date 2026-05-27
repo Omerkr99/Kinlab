@@ -18,6 +18,8 @@ export interface BodyState {
   torque?:  number  // torque accumulator (N·m) — cleared each step
   inertia?: number  // moment of inertia (default 1)
   radius?:  number  // collision radius (px) — default BALL_RADIUS
+  // KAN-111: display type label — 'Circle' by default
+  type?:    string
 }
 
 export class Body {
@@ -38,6 +40,7 @@ export class Body {
   torque  = 0           // torque accumulator — cleared each step
   inertia = 1           // moment of inertia
   radius  = BALL_RADIUS // collision radius
+  type    = 'Circle'   // KAN-111: display type — 'Circle' by default
 
   constructor(init: Partial<BodyState> = {}) {
     Object.assign(this, init)
