@@ -18,8 +18,10 @@ import { NAV_TABS, type ActiveNavTab } from './shellTypes'
 import { useTheme } from '../context/ThemeContext'
 
 interface NavBarProps {
-  activeTab: ActiveNavTab
-  onChange:  (tab: ActiveNavTab) => void
+  activeTab:  ActiveNavTab
+  onChange:   (tab: ActiveNavTab) => void
+  /** KAN-112: called when a right-side action button is clicked */
+  onAction?:  (action: 'save' | 'load' | 'export' | 'help') => void
 }
 
 // ── Dark mode toggle ──────────────────────────────────────────────────────────
@@ -74,7 +76,7 @@ const RIGHT_ACTIONS = [
   { icon: '❓', label: 'Help',   action: 'help'   },
 ] as const
 
-function ActionButton({ icon, label }: { icon: string; label: string }) {
+function ActionButton({ icon, label, onClick }: { icon: string; label: string; onClick?: () => void }) {
   const [hov, setHov] = useState(false)
   const { isDark } = useTheme()
 
@@ -82,6 +84,7 @@ function ActionButton({ icon, label }: { icon: string; label: string }) {
     <button
       aria-label={label}
       title={label}
+      onClick={onClick}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
@@ -123,7 +126,7 @@ function AtomIcon() {
 
 // ── NavBar ────────────────────────────────────────────────────────────────────
 
-export function NavBar({ activeTab, onChange }: NavBarProps) {
+export function NavBar({ activeTab, onChange, onAction }: NavBarProps) {
   const { isDark } = useTheme()
 
   const headerBg     = isDark ? 'var(--kl-bg-app)'     : '#FFFFFF'
@@ -212,7 +215,8 @@ export function NavBar({ activeTab, onChange }: NavBarProps) {
         }} />
 
         {RIGHT_ACTIONS.map(a => (
-          <ActionButton key={a.action} icon={a.icon} label={a.label} />
+          <ActionButton key={a.action} icon={a.icon} label={a.label}
+            onClick={() => onAction?.(a.action)} />
         ))}
       </div>
     </header>
