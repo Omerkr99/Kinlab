@@ -11,6 +11,7 @@
  */
 import { useState, useEffect } from 'react'
 import { World, Body, InteractionLayer } from './engine'
+import { PhysicsEventBus } from './engine/PhysicsEvents'
 import { DataRecorder } from './recorder'
 import { GraphPopup } from './components/GraphPopup'
 import { KinLabShell } from './shell/KinLabShell'
@@ -20,7 +21,9 @@ import {
 } from './units/PhysicsScale'
 
 // ── Stable engine objects (created once, never recreated on re-render) ────────
+const eventBus    = new PhysicsEventBus()
 const world       = new World()
+world.bus         = eventBus
 world.addBody(new Body({ x: 300, y: 50 }))
 const recorder    = new DataRecorder()
 const interaction = new InteractionLayer()
@@ -91,6 +94,7 @@ export default function App() {
       world={world}
       recorder={recorder}
       interaction={interaction}
+      eventBus={eventBus}
       scale={scale}
       onScaleChange={handleScaleChange}
       gravity={gravity}

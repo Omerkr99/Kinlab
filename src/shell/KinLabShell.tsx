@@ -30,8 +30,10 @@ import { Day9Panel }               from '../components/Day9Panel'
 import { ForcesDemoPanel }         from '../components/ForcesDemoPanel'
 import { Day10Panel }              from '../components/Day10Panel'
 import type { World, InteractionLayer } from '../engine'
+import type { PhysicsEventBus } from '../engine/PhysicsEvents'
 import type { DataRecorder, SeriesKey } from '../recorder'
 import type { PhysicsScale } from '../units/PhysicsScale'
+import { useToast } from '../context/ToastContext'
 import type {
   PlayState, ActiveNavTab, SidebarTab, ActiveTool,
   EnvironmentSettings, CursorPos,
@@ -260,6 +262,8 @@ interface KinLabShellProps {
   world:           World
   recorder:        DataRecorder
   interaction:     InteractionLayer
+  /** PhysicsEventBus wired to world.bus — used for toast notifications */
+  eventBus?:       PhysicsEventBus
   scale:           PhysicsScale
   onScaleChange:   (s: PhysicsScale) => void
   gravity:         number
@@ -270,9 +274,31 @@ interface KinLabShellProps {
 
 export function KinLabShell({
   world, recorder, interaction,
+  eventBus,
   scale, onScaleChange,
   gravity, onGravityChange,
 }: KinLabShellProps) {
+
+  // ── Toast notifications from PhysicsEventBus [KAN-94] ─────────────────────
+  const { toast } = useToast()
+
+  useEffect(() => {
+    if (!eventBus) return
+
+    const onCollision = () => toast.info('Bodies collided', { duration: 2500 })
+    const onRest      = () => toast.success('Body came to rest', { duration: 2500 })
+    const onBounce    = () => { /* floor-bounce — intentionally silent to avoid spam */ }
+
+    eventBus.on('collision',    onCollision)
+    eventBus.on('rest',         onRest)
+    eventBus.on('floor-bounce', onBounce)
+
+    return () => {
+      eventBus.off('collision',    onCollision)
+      eventBus.off('rest',         onRest)
+      eventBus.off('floor-bounce', onBounce)
+    }
+  }, [eventBus, toast])
 
   // ── UI state ───────────────────────────────────────────────────────────────
   const [activeNavTab,  setActiveNavTab]  = useState<ActiveNavTab>('simulation')
@@ -362,6 +388,7 @@ export function KinLabShell({
           onGridEnabled={setGridEnabled}
           snapEnabled={snapEnabled}
           onSnapEnabled={setSnapEnabled}
+          onAfterReset={() => toast.info('Simulation reset', { duration: 2000 })}
         />
 
         {/* ── Main area (CSS Grid) ───────────────────────────────────── */}
