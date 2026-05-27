@@ -40,13 +40,15 @@ function preserveGravity(
   return gravityMs2ToEngine(ms2, newScale)
 }
 
-// ── App ───────────────────────────────────────────────────────────────────────
+// ── SimApp — owns scale + gravity state; rendered only in non-popup mode ─────
+//
+// Extracted to its own component so that React hooks (useState, useEffect)
+// are always called unconditionally, satisfying the Rules of Hooks.
+// Previously the hooks lived in App() but were preceded by an early return
+// for popup mode — a violation that React's linter and future strict-mode
+// would break on.
 
-export default function App() {
-  // ── Popup mode: standalone graph window (opened via ⤢ button) ─────────────
-  const isPopup = new URLSearchParams(window.location.search).get('popup') === 'true'
-  if (isPopup) return <GraphPopup />
-
+function SimApp() {
   // ── Scale + gravity state (lifted here so they survive tab switches) ───────
   const [scale,   setScale]   = useState<PhysicsScale>(DEFAULT_SCALE)
   const [gravity, setGravity] = useState(world.gravity)
@@ -88,7 +90,6 @@ export default function App() {
     return () => { clearInterval(id); ch.close() }
   }, [])
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <KinLabShell
       world={world}
@@ -101,4 +102,15 @@ export default function App() {
       onGravityChange={handleGravityChange}
     />
   )
+}
+
+// ── App ───────────────────────────────────────────────────────────────────────
+//
+// Top-level router: popup mode renders a bare GraphPopup window;
+// normal mode renders SimApp (which owns all simulation state).
+
+export default function App() {
+  const isPopup = new URLSearchParams(window.location.search).get('popup') === 'true'
+  if (isPopup) return <GraphPopup />
+  return <SimApp />
 }
