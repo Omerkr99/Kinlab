@@ -1,8 +1,12 @@
-# 🔬 KinLab — Interactive Physics Simulation
+# 🔬 KinLab — Interactive Physics Simulation Lab
 
-Browser-based kinematics lab. Drop a ball, record motion data, analyze graphs in real time.
+> A browser-based kinematics simulator. Drop objects, record motion data, analyze graphs in real time.
 
 **Stack:** React 18 · TypeScript 5 · Vite 5 · Vitest 2 · HTML5 Canvas
+
+[![Tests](https://img.shields.io/badge/tests-547%20passing-brightgreen)](#test-coverage)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](tsconfig.json)
+[![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 ---
 
@@ -10,11 +14,129 @@ Browser-based kinematics lab. Drop a ball, record motion data, analyze graphs in
 
 ```bash
 npm install
-npm run dev        # → localhost:5173
+npm run dev        # → http://localhost:5173
 npm test           # watch mode
-npm run test:run   # single run (547 tests)
+npm run test:run   # single pass  (547 tests)
 npm run build      # production → dist/
 ```
+
+---
+
+## ✅ Live Features
+
+### 🧲 Physics Engine
+| Feature | Details |
+|---------|---------|
+| **Euler integration** | `World.step(dt)` — gravity, velocity, position updated every frame |
+| **Floor & wall collisions** | Configurable restitution (bounciness) and floor friction |
+| **Environment toggles** | Floor on/off · walls on/off — bodies fall through or escape |
+| **Multi-body simulation** | Add up to N bodies; circle-circle collision detection (opt-in) |
+| **Force pipeline** | Pluggable `IForce` strategy pattern (GravityForce, DragForce, SpringForce) |
+| **Constraints** | `DistanceConstraint`, `PinJoint` — iterative position correction |
+| **Angular physics** | `omega`, `alpha`, `torque`, `inertia` — rotation with Day 10 torque forces |
+| **Sim speed** | 0.5× slow-motion → 4× fast-forward via multi-sub-step decomposition |
+
+### 🎨 Canvas & Rendering
+| Feature | Details |
+|---------|---------|
+| **60 FPS rAF loop** | `WorldCanvas` — smooth physics + render in one loop |
+| **Multi-body palette** | Per-body radial-gradient colours (blue/green/red/purple/amber) |
+| **Rectangle bodies** | Box shape with linear gradient + `ctx.rotate(b.angle)` — respects angular physics |
+| **User-set colour** | `<input type="color">` in Object Properties → `b.color` → canvas fill |
+| **Velocity arrows** | Per-body velocity vector overlaid on each body |
+| **Collision flash** | 400 ms glowing ring on floor-bounce / wall-bounce / body-body collision |
+| **Scale ruler** | Bottom-left overlay (hidden in px mode) showing real-world unit tick |
+| **Grid overlay** | Optional dot-grid with snap-to-grid dragging |
+| **Dark mode** | Full canvas dark theme via `ThemeContext`; `CanvasTheme` token system |
+
+### 🛠 Tools Toolbar
+| Tool | Shortcut | Behaviour |
+|------|----------|-----------|
+| **Select** | S | Click body → open Object Properties; click background → deselect |
+| **Move** | M | Drag a body with the mouse; snap-to-grid optional |
+| **Force** | F | Drag from a body → release applies impulse proportional to drag vector |
+| **Delete** | D | Click a body to remove it from the simulation |
+
+### 📊 Data & Graphs
+| Feature | Details |
+|---------|---------|
+| **7-series recorder** | `time, x, y, vx, vy, ax, ay` recorded every simulation step |
+| **Multi-body recording** | Records the *selected* body; falls back to body 0 |
+| **Live graph** | Configurable X/Y axes, flip-Y, auto-scale, real-time update |
+| **Pop-out graph** | Detachable graph window synced via `BroadcastChannel` |
+| **DataTable** | Live scrollable table — last 150 rows, smart auto-scroll |
+| **↓ Live chip** | Pauses auto-scroll when user scrolls up; blue pill button snaps back |
+| **CSV Export** | Download `time_s, x_px, y_px, vx, vy, ax, ay` with one click |
+| **Unit display** | All data shown in the active physics scale (px / cm / m / custom) |
+
+### ⚙️ Object Properties Panel
+| Feature | Details |
+|---------|---------|
+| **Live polling** | Position, velocity, acceleration update at 80 ms |
+| **Editable fields** | x, y, vx, vy, mass — click any field and type to change |
+| **Dynamic units** | Labels (m, m/s, m/s²) follow the active PhysicsScale |
+| **Type label** | Reads `b.type` — shows "Circle", "Rectangle", or any future type |
+| **Color picker** | `<input type="color">` — change instantly, canvas updates next frame |
+| **Live Values** | Time · FPS · Object count · Momentum |
+| **Recording badge** | Pulsing ● indicator + point count when recorder is active |
+| **Delete button** | Removes body, clears selection, updates collision detection |
+
+### 🌍 Environment Settings
+| Control | Range | Default |
+|---------|-------|---------|
+| Floor enabled | on / off | on |
+| Walls enabled | on / off | on |
+| Restitution | 0–1 | 0.80 |
+| Friction | 0–1 | 0.20 |
+
+### 📐 Unit System
+| Scale | Conversion | Gravity (Earth) |
+|-------|-----------|----------------|
+| `px` | 1:1 identity — cartoon physics | 9.8 px/s² |
+| `cm` | 10 px = 1 cm | 980 cm/s² |
+| `m` | 100 px = 1 m | 9.8 m/s² (→ 980 px/s²) |
+| `custom` | User-defined px/unit | auto-converted |
+
+Scale switching preserves physical gravity (9.8 m/s² stays Earth regardless of unit).
+
+### 💾 Persistence & Sharing
+| Feature | Details |
+|---------|---------|
+| **Save** | Serialises all bodies + physics settings to `localStorage` |
+| **Load** | Restores bodies, gravity, environment; syncs React state |
+| **Export CSV** | Downloads recorder data as `kinlab-data-<timestamp>.csv` |
+| **Help modal** | Keyboard shortcuts, tool descriptions, environment & units guide |
+
+### 🌙 UI Shell
+| Feature | Details |
+|---------|---------|
+| **Dark / Light mode** | Persisted to `localStorage`; OS preference auto-detected |
+| **Responsive layout** | Sidebar auto-collapses below 900 px; re-expands on widen |
+| **Tab navigation** | Simulation · Objects · Forces · Graphs · Data Monitor · Settings |
+| **Toast notifications** | Floor bounce · wall bounce · rest · collision events |
+| **Gravity presets** | 🚀 Zero · 🌙 Moon · 🔴 Mars · 🌍 Earth · 🪐 Jupiter |
+
+---
+
+## 🗺 Roadmap — Coming Next
+
+### High Priority
+- [ ] **KAN-113 — Undo / Redo** — action stack for body add/delete/property changes
+- [ ] **KAN-114 — Spring visual** — render spring coil between pinned anchor and body
+- [ ] **KAN-115 — Polygon bodies** — convex polygon shape + SAT collision detection
+- [ ] **KAN-116 — Fixed-point anchor** — pin a body to a fixed canvas coordinate
+
+### Medium Priority
+- [ ] **KAN-117 — Multi-body CSV export** — export data for all bodies simultaneously
+- [ ] **KAN-118 — Scenario presets** — one-click load of Projectile / Pendulum / Spring scenarios
+- [ ] **KAN-119 — Body inspector graph** — mini inline graph directly in the right sidebar
+- [ ] **KAN-120 — Zoom & pan** — viewport zoom with middle-mouse scroll + drag-to-pan
+
+### Future / Research
+- [ ] **KAN-121 — Fluid drag toggle** — add `DragForce` to the environment settings panel
+- [ ] **KAN-122 — JSON scene export** — full scene (bodies + forces + constraints) as portable JSON
+- [ ] **KAN-123 — Replay mode** — step through recorded data frame-by-frame
+- [ ] **KAN-124 — Friction model refinement** — Coulomb friction with rest detection per-body
 
 ---
 
@@ -24,193 +146,81 @@ npm run build      # production → dist/
 World.step() → DataRecorder.record() → getSeries() → GraphEngine.draw() → React UI
 ```
 
-Physics is the **source of truth** — always runs in pixels internally. The UI is a pure display layer.
+Physics is the **source of truth** — runs entirely in pixels internally. Every UI element is a pure display adapter over the engine state.
 
----
-
-## Daily Progress
-
-### Day 1 — Scaffold & Core Engine
-> Physics engine, canvas loop, data recorder, graph renderer, control bar
-
-- `Body.ts` — data model (x, y, vx, vy, ax, ay)
-- `World.ts` — Euler integration, gravity, floor collision (DAMPING = 0.7)
-- `InteractionLayer.ts` — drag & pause/resume
-- `DataRecorder.ts` — in-memory time-series recorder
-- `GraphEngine.ts` — canvas graph (grid, axes, data line)
-- `WorldCanvas.tsx` — 60 FPS `requestAnimationFrame` loop
-- `GraphCanvas.tsx` — 30 FPS graph refresh
-- `ControlBar.tsx` — Play / Pause / Stop / Reset
-- `AxisSelector.tsx` — X/Y axis dropdowns
-
----
-
-### Day 2 — Full Kinematics Pipeline
-> Completed 7-series recording, architecture fixes, load tests
-
-- Extended `DataRecorder` to 7 series: `time, x, y, vx, vy, ax, ay`
-- `constants.ts` — single source of truth for `FLOOR_Y`, `CANVAS_W`, `BALL_RADIUS`, `GRAVITY`
-- Play now resets ball position to origin (not just the recorder)
-- `GraphEngine` — switched to `reduce` (prevents stack overflow past 65k points)
-- `GraphCanvas` — polling skips frames with no new data (dirty-flag)
-- `recorder.start()` moved from module load to user interaction (Play)
-- Physical coordinate convention: `y_phys = FLOOR_Y − canvas_y` (floor = 0, up = +)
-- Y-direction toggle on graph (↑ physical / ↓ canvas)
-- 14 load tests — engine throughput, recorder capacity, graph render performance
-
----
-
-### Day 3 — Collisions, Export & UI
-> Wall collisions, live data table, CSV export, gravity control, popup graph
-
-- **Wall collisions** — left/right bounds (`WALL_L = 20px`, `WALL_R = 580px`), `WALL_DAMPING = 0.8`
-- **Recording indicator** — live `● REC` / `‖ PAUSED` / `IDLE` badge in control bar
-- **DataTable** — scrollable live table, last 150 rows, collapsible
-- **CSV export** — 7-column download with 6-decimal precision
-- **GravitySlider** — real-time gravity control with planet presets (🌙 Moon / 🌍 Earth / 🪐 Jupiter)
-- **Popup graph** — detached browser window via `BroadcastChannel` sync (`?popup=true`)
-- Day 3 demo panel — wall-bounce visualization with bounce counters and mini-graphs
-- 49 readiness stress tests — multi-body, energy invariants, 200k-sample memory, CSV at scale
-
----
-
-### Day 4 — Determinism & Phase 2 Validation
-> Pure test sprint — no new features, full engine verification
-
-- `determinism.test.ts` — expanded to 21 scenarios: basic, wall bounces, multi-body, gravity switches, InteractionLayer, 10k/36k-step large-scale
-- `day4.test.ts` — new file, 64 tests across 10 categories:
-  - Engine barrel exports · Body fields · Euler math · Gravity (0/negative/clamp) · Floor & wall collisions · Velocity clamping · InteractionLayer API · Multi-body · Engine+Recorder pipeline
-
----
-
-### Unit Calibration (pre-Day 5)
-> Physical measurement system — px / cm / m / custom
-
-- `PhysicsScale.ts` — unit layer: `pxToUnit`, `unitToPx`, axis labels, gravity converters
-- `ScaleControl.tsx` — selector bar with inline custom PPU input
-- Graph axes show physical units with min/max tick annotations
-- DataTable & CSV export values converted to chosen unit
-- GravitySlider range scales automatically (px → 0–30, cm → 0–3000)
-- WorldCanvas draws a scale ruler overlay (hidden in px mode)
-- Switching scale preserves physical gravity in SI (9.8 m/s² stays Earth regardless of unit)
-
----
-
-### Day 8 — Mouse Events + ControlBar (KAN-16)
-> WorldCanvas mouse interaction, ControlBar Play/Pause/Reset, UC-1..4 verified
-
-- **T8.1** `WorldCanvas.tsx` — `mousedown` (drag hit-test or reset+start), `mousemove` (updateDrag), `mouseup` (endDrag) + `removeEventListener` cleanup
-- **T8.2** `ControlBar.tsx` — Play (resume+reset+start+reposition), Pause (inter.pause), Reset (pause+reset+reposition), Stop (pause+stop)
-- **T8.3** ControlBar above WorldCanvas in `App.tsx`, shared recorder reference
-- **T8.4** Git commit tagged
-- UC-1 drop/bounce · UC-2 pause/resume · UC-3 drag · UC-4 click starts recording
-- `src/day8.test.ts` — 43 unit tests (UC-1..4 + T8.1-T8.3 contract)
-- `src/day8-load.test.ts` — 15 load tests (drag throughput, pause cycles, session restarts, full UC pipeline)
-- `Day7Panel.tsx` replaces Day6Panel — live GraphEngine demo: axis selector, scale switcher, flipY, dirty-flag counter
-
----
-
-### Day 7 — GraphEngine.ts + GraphCanvas.tsx (KAN-15)
-> Graph rendering, 30fps dirty-flag polling, flipY, unit-aware axis labels, pop-out window
-
-- **T7.1** `GraphEngine.ts` — `draw(recorder, xKey, yKey, flipY, scale)`: `drawGrid` (50px grid), `drawAxes` with `axisLabel()` unit strings + min/max tick annotations, `drawData` with auto-scale (`xRange || 1`)
-- **T7.2** `GraphEngine.test.ts` — 2 gate tests: no throw with 2+ pts, early return with < 2 pts
-- **T7.3** `GraphCanvas.tsx` — `useRef` engine singleton, `setInterval(32ms)` dirty-flag loop (skips frame when recorder length unchanged), `flipY` + `scale` reset dirty flag
-- **T7.4** App integration — `WorldCanvas` + `GraphCanvas` side-by-side; recorder seeded by `ControlBar.handlePlay`; popup graph via `BroadcastChannel`
-- `src/day7.test.ts` — 42 unit tests (T7.1–T7.4: constructor, guards, auto-scale, flipY, scale conversion, axis labels, dirty-flag logic, end-to-end pipeline)
-- `src/day7-load.test.ts` — 18 load tests (60fps throughput, scale conversion, flipY under load, 3 600-frame pipeline, determinism)
-
----
-
-### Day 6 — WorldCanvas.tsx + rAF Loop (KAN-14)
-> Canvas rendering, 60fps animation loop, FR-21 velocity arrow
-
-- **T6.1** `WorldCanvas.tsx` — `useEffect` rAF loop, `dt = Math.min(elapsed/1000, 0.016)`, `world.step(dt)` + `recorder.record()` every frame
-- **T6.2** `draw()` — `clearRect`, floor line at `y=FLOOR_Y`, radial-gradient blue ball, red velocity arrow (`VEL_SCALE=5`, FR-21), scale ruler overlay
-- **T6.3** App architecture — `world` / `recorder` / `interaction` instances created **outside** the component (stable rAF closure, no recreation on re-render)
-- **T6.4** FPS verified — `FpsMeter` in loop measures ~60fps; throughput: 3600 frames < 200ms
-- `src/day6.test.ts` — 33 unit tests (dt capping, coord transform, pause/resume, draw guards, architecture)
-- `src/day6-load.test.ts` — 15 load tests (36k frames NaN-free, determinism, gravity switch mid-loop)
-- `Day6Panel.tsx` replaces Day3Panel + Day5Panel — live telemetry: FPS gauge, dt value, KE/PE, event feed
-
----
-
-### Day 5 — Architectural Infrastructure & System Tests
-> Shared types, physics event bus, math helpers, FPS meter, recorder integration
-
-- `src/types/index.ts` — shared type registry (`PlayState`, `SimulationConfig`, `BodySnapshot`, `SeriesKey`, `RecorderSnapshot`, `AxisDescriptor`)
-- `src/engine/PhysicsEvents.ts` — `PhysicsEventBus` pub/sub for `floor-bounce`, `wall-bounce`, `rest`, `step` events
-- `src/utils/math.ts` — pure physics math helpers: `clamp`, `lerp`, `roundTo`, `kineticEnergy`, `potentialEnergy`, `mechanicalEnergy`, `mapRange`
-- `src/utils/fps.ts` — `FpsMeter` rolling-average FPS counter (configurable window, min/max, reset)
-- `src/recorder/integration.test.ts` — KAN-13 T5.3: 15 integration tests (step↔length parity, time monotonicity, NaN guard, stop gate, multi-body)
-- `src/day5.test.ts` — 67 readiness tests covering all new infrastructure + cross-module integration
+```
+src/
+├── engine/
+│   ├── Body.ts                 ← physics data model (x,y,vx,vy,ax,ay,angle,omega,color,type)
+│   ├── World.ts                ← Euler integration, gravity, floor/wall, force pipeline, constraints
+│   ├── BodyFactory.ts          ← circle(), rectangle(), fromType(), heavy(), light(), launched()
+│   ├── InteractionLayer.ts     ← drag + pause/resume
+│   ├── PhysicsEvents.ts        ← pub/sub bus (floor-bounce, wall-bounce, rest, collision, step)
+│   ├── forces/                 ← GravityForce, DragForce, SpringForce, TorqueForce (IForce pattern)
+│   ├── constraints/            ← DistanceConstraint, PinJoint (IConstraint pattern)
+│   └── collisions/             ← CircleCollision, CollisionResolver, CollisionManifold
+├── recorder/
+│   └── DataRecorder.ts         ← 7-series (time, x, y, vx, vy, ax, ay) in-memory recorder
+├── graph/
+│   └── GraphEngine.ts          ← canvas graph: grid, axes, unit labels, auto-scale, flipY
+├── canvas/
+│   ├── WorldCanvas.tsx         ← 60 fps rAF loop; tool dispatch; dark mode; collision flash
+│   └── GraphCanvas.tsx         ← 30 fps graph refresh; pop-out via BroadcastChannel
+├── shell/
+│   ├── KinLabShell.tsx         ← root shell — layout, state orchestration, all callbacks
+│   ├── NavBar.tsx              ← tab strip + dark toggle + Save/Load/Export/Help actions
+│   ├── LeftSidebar.tsx         ← tools + add-object + environment settings
+│   ├── ObjectPropertiesPanel.tsx ← right panel — live body state, color picker, delete
+│   ├── SimControlBar.tsx       ← Play / Pause / Reset / speed / grid / snap
+│   └── BottomPanels.tsx        ← graph + data table tabs
+├── components/
+│   ├── HelpModal.tsx           ← keyboard shortcuts + feature guide (portal)
+│   ├── DataTable.tsx           ← smart auto-scroll, ↓ Live chip, unit-aware
+│   ├── GravitySlider.tsx       ← slider + planet presets, unit-aware range
+│   └── ScaleControl.tsx        ← unit picker (px/cm/m/custom PPU)
+├── persistence/
+│   └── persistence.ts          ← saveWorld, loadWorld, hasSave, exportCSV
+├── context/
+│   ├── ThemeContext.tsx         ← light/dark provider + useTheme hook
+│   └── ToastContext.tsx         ← toast notification provider
+└── units/
+    └── PhysicsScale.ts         ← pxToUnit, axisLabel, gravityMs2ToEngine, presets
+```
 
 ---
 
 ## Test Coverage
 
 | Suite | Tests | Focus |
-|---|---|---|
+|-------|-------|-------|
 | `engine/Body.test.ts` | 2 | Body defaults & init |
-| `engine/World.test.ts` | 5 | Euler, floor collision, dt clamp |
+| `engine/World.test.ts` | 5 | Euler, floor, dt clamp |
 | `engine/InteractionLayer.test.ts` | 3 | Drag & pause API |
-| `engine/determinism.test.ts` | 14 | Engine determinism — multi-body, gravity switches |
+| `engine/determinism.test.ts` | 14 | Determinism — multi-body, gravity switches |
 | `recorder/DataRecorder.test.ts` | 5 | Record, getSeries, stop, reset |
-| `graph/GraphEngine.test.ts` | 2 | Draw, guard (T7.2 gate tests) |
-| `integration.test.ts` | 8 | Full pipeline smoke tests |
-| `data-integrity.test.ts` | 22 | Physics data correctness — direction, bounce, rest |
+| `graph/GraphEngine.test.ts` | 2 | Draw guard, no throw |
+| `integration.test.ts` | 8 | Full pipeline smoke |
+| `data-integrity.test.ts` | 22 | Direction, bounce, rest correctness |
 | `day3.test.ts` | 28 | Wall collisions, CSV, table, slider |
 | `day4.test.ts` | 51 | Phase 2 complete verification |
 | `units/PhysicsScale.test.ts` | 29 | Unit conversions & gravity math |
 | `load.test.ts` | 14 | Throughput & render performance |
-| `stress-reliability.test.ts` | 41 | Stress, invariants, determinism × 10 |
-| `readiness.test.ts` | 49 | Day-4 prep — multi-body, memory, CSV |
-| `recorder/integration.test.ts` | 15 | T5.3 — step↔recorder pipeline integrity |
-| `day5.test.ts` | 67 | Day 5 infra — types, events, math, FPS |
-| `day5-load.test.ts` | 31 | Day 5 load — EventBus throughput, FPS precision, math batch, full pipeline |
-| `day6.test.ts` | 33 | T6.1–T6.4 — dt cap, coord transform, draw guards, arch, FPS |
-| `day6-load.test.ts` | 15 | Day 6 load — 36k frames, determinism, gravity switch, graph render |
-| `day7.test.ts` | 42 | T7.1–T7.4 — GraphEngine API, guards, flipY, scale, dirty-flag, pipeline |
-| `day7-load.test.ts` | 18 | Day 7 load — graph throughput, scale conversion, flipY, determinism |
-| `day8.test.ts` | 43 | UC-1..4 + T8.1–T8.3 — drop/bounce, pause/resume, drag, click-starts-recording |
-| `day8-load.test.ts` | 15 | Day 8 load — drag throughput, pause cycles, session restarts, UC pipeline |
+| `stress-reliability.test.ts` | 41 | Stress, invariants, determinism ×10 |
+| `readiness.test.ts` | 49 | Multi-body, memory, CSV at scale |
+| `recorder/integration.test.ts` | 15 | step↔recorder pipeline integrity |
+| `day5.test.ts` | 67 | Types, events, math helpers, FPS meter |
+| `day5-load.test.ts` | 31 | EventBus throughput, FPS precision, batch math |
+| `day6.test.ts` | 33 | dt cap, coord transform, draw guards, arch |
+| `day6-load.test.ts` | 15 | 36k frames NaN-free, gravity switch mid-loop |
+| `day7.test.ts` | 42 | GraphEngine API, guards, flipY, scale, dirty-flag |
+| `day7-load.test.ts` | 18 | Graph throughput, scale conversion, flipY |
+| `day8.test.ts` | 43 | UC-1..4 + mouse/drag/recording contracts |
+| `day8-load.test.ts` | 15 | Drag throughput, pause cycles, UC pipeline |
 
 **Total: 547 / 547 ✅**
 
 ---
 
-## Project Structure
+## License
 
-```
-src/
-├── engine/
-│   ├── Body.ts                 ← physics data model
-│   ├── World.ts                ← Euler integration + collisions
-│   ├── InteractionLayer.ts     ← drag + pause/resume
-│   └── index.ts                ← barrel export
-├── recorder/
-│   └── DataRecorder.ts         ← 7-series time-series recorder
-├── graph/
-│   └── GraphEngine.ts          ← canvas graph renderer
-├── canvas/
-│   ├── WorldCanvas.tsx         ← 60fps simulation loop
-│   └── GraphCanvas.tsx         ← graph canvas + pop-out
-├── components/
-│   ├── ControlBar.tsx          ← Play / Pause / Stop / Reset
-│   ├── AxisSelector.tsx        ← X/Y axis dropdowns
-│   ├── GravitySlider.tsx       ← gravity control + planet presets
-│   ├── DataTable.tsx           ← live scrollable data table
-│   ├── CsvExportButton.tsx     ← CSV download
-│   ├── ScaleControl.tsx        ← unit selector (px/cm/m/custom)
-│   ├── Day3Panel.tsx           ← wall-bounce demo panel
-│   └── GraphPopup.tsx          ← detached graph window
-├── units/
-│   └── PhysicsScale.ts         ← unit calibration layer
-├── types/
-│   └── index.ts                ← shared type definitions
-├── utils/
-│   ├── math.ts                 ← clamp, lerp, energy helpers
-│   └── fps.ts                  ← FpsMeter rolling FPS counter
-├── constants.ts                ← shared physics & canvas constants
-└── App.tsx
-```
+MIT © Omer Kramer
