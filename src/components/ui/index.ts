@@ -20,3 +20,5 @@ export type { BadgeVariant } from './Badge'
 
 export { TabNav, TabPanel } from './TabNav'
 export type { TabItem }     from './TabNav'
+
+export { Toggle }           from './Toggle'

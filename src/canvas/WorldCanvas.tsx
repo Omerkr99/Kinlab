@@ -6,10 +6,12 @@ import { FLOOR_Y, CANVAS_W, CANVAS_H, BALL_RADIUS } from '../constants'
 import { PhysicsScale, DEFAULT_SCALE } from '../units/PhysicsScale'
 
 interface Props {
-  world:       World
-  recorder:    DataRecorder
-  interaction: InteractionLayer
-  scale?:      PhysicsScale
+  world:          World
+  recorder:       DataRecorder
+  interaction:    InteractionLayer
+  scale?:         PhysicsScale
+  /** Called when the user clicks a body (index) or the background (null) */
+  onBodySelect?:  (index: number | null) => void
 }
 
 const VEL_SCALE = 5
@@ -135,7 +137,7 @@ function drawWorld(canvas: HTMLCanvasElement, world: World, scale: PhysicsScale)
   drawScaleRuler(ctx, scale)
 }
 
-export function WorldCanvas({ world, recorder, interaction, scale = DEFAULT_SCALE }: Props) {
+export function WorldCanvas({ world, recorder, interaction, scale = DEFAULT_SCALE, onBodySelect }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const scaleRef  = useRef<PhysicsScale>(scale)
   scaleRef.current = scale  // always up-to-date inside the rAF loop
@@ -171,9 +173,11 @@ export function WorldCanvas({ world, recorder, interaction, scale = DEFAULT_SCAL
       const b = world.bodies.find(b => Math.hypot(b.x - x, b.y - y) < BALL_RADIUS + 5)
       if (b) {
         interaction.startDrag(b)
+        onBodySelect?.(world.bodies.indexOf(b))
       } else {
         recorder.reset()
         recorder.start()
+        onBodySelect?.(null)
       }
     }
     const onMove = (e: MouseEvent) => interaction.updateDrag(e.offsetX, e.offsetY)
