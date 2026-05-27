@@ -457,6 +457,7 @@ export function KinLabShell({
                     scale={scale}
                     simSpeed={simSpeed}
                     onBodySelect={handleBodySelect}
+                    eventBus={eventBus}
                   />
                 </CanvasArea>
 
