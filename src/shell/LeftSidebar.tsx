@@ -36,6 +36,8 @@ interface LeftSidebarProps {
   pluginSlot?:   React.ReactNode
   /** Whether collapsed to icon-only mode */
   collapsed?:    boolean
+  /** Called when the user clicks the collapse/expand toggle button */
+  onCollapsedChange?: (collapsed: boolean) => void
 }
 
 // ── Sidebar tab button ────────────────────────────────────────────────────────
@@ -227,6 +229,7 @@ export function LeftSidebar({
   onObjectTypeAdd, onCustomObjectCreate,
   pluginSlot,
   collapsed = false,
+  onCollapsedChange,
 }: LeftSidebarProps) {
 
   const w = collapsed ? 56 : 260
@@ -251,21 +254,44 @@ export function LeftSidebar({
         flexShrink:     0,
       }}
     >
-      {/* Tab bar */}
-      {!collapsed && (
-        <div
-          role="tablist"
-          aria-label="Sidebar sections"
-          style={{
-            display:     'flex',
-            borderBottom: '1px solid #E5E7EB',
-            flexShrink:  0,
-          }}
-        >
-          <SideTab label="Tools"      active={sidebarTab === 'tools'}      onClick={() => onSidebarTab('tools')}      />
-          <SideTab label="Add Object" active={sidebarTab === 'add-object'} onClick={() => onSidebarTab('add-object')} />
-        </div>
-      )}
+      {/* Header: tab bar + collapse button */}
+      <div style={{
+        display: 'flex',
+        borderBottom: '1px solid #E5E7EB',
+        flexShrink: 0,
+        alignItems: 'center',
+      }}>
+        {!collapsed && (
+          <div
+            role="tablist"
+            aria-label="Sidebar sections"
+            style={{ display: 'flex', flex: 1 }}
+          >
+            <SideTab label="Tools"      active={sidebarTab === 'tools'}      onClick={() => onSidebarTab('tools')}      />
+            <SideTab label="Add Object" active={sidebarTab === 'add-object'} onClick={() => onSidebarTab('add-object')} />
+          </div>
+        )}
+        {/* Collapse / expand toggle (KAN-96) */}
+        {onCollapsedChange && (
+          <button
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            onClick={() => onCollapsedChange(!collapsed)}
+            style={{
+              width: collapsed ? 56 : 32, height: 36,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+              border: 'none', background: 'transparent',
+              color: '#9CA3AF', cursor: 'pointer', fontSize: 14,
+              transition: 'color 0.12s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#374151')}
+            onMouseLeave={e => (e.currentTarget.style.color = '#9CA3AF')}
+          >
+            {collapsed ? '›' : '‹'}
+          </button>
+        )}
+      </div>
 
       {/* Scrollable body */}
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>

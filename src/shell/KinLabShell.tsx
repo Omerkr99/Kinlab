@@ -15,7 +15,7 @@
  * All UI state lives here. Physics state lives in the props (world, recorder, etc.).
  * Injects global CSS: variables + keyframes + base resets.
  */
-import { useState, useCallback, useEffect, CSSProperties } from 'react'
+import { useState, useCallback, useEffect, useRef, CSSProperties } from 'react'
 import { NavBar }                  from './NavBar'
 import { SimControlBar }           from './SimControlBar'
 import { LeftSidebar }             from './LeftSidebar'
@@ -34,6 +34,7 @@ import type { PhysicsEventBus } from '../engine/PhysicsEvents'
 import type { DataRecorder, SeriesKey } from '../recorder'
 import type { PhysicsScale } from '../units/PhysicsScale'
 import { useToast } from '../context/ToastContext'
+import { useResizeObserver } from './hooks'
 import type {
   PlayState, ActiveNavTab, SidebarTab, ActiveTool,
   EnvironmentSettings, CursorPos,
@@ -312,9 +313,26 @@ export function KinLabShell({
   const [zoom,          setZoom]          = useState(1)
   const [simSpeed,      setSimSpeed]      = useState(1)
   const [cursorPos,     setCursorPos]     = useState<CursorPos | null>(null)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  // setSidebarCollapsed is wired in KAN-96 (responsive auto-collapse)
-  void setSidebarCollapsed
+  const [sidebarCollapsed,    setSidebarCollapsed]    = useState(false)
+  // Track whether the user manually toggled the sidebar (overrides auto-collapse)
+  const [sidebarUserLocked,   setSidebarUserLocked]   = useState(false)
+  const shellRef = useRef<HTMLDivElement>(null)
+
+  // KAN-96: Auto-collapse sidebar below 1200px using ResizeObserver
+  const { width: shellWidth } = useResizeObserver(shellRef as React.RefObject<Element>)
+  useEffect(() => {
+    if (shellWidth === 0) return  // not yet measured
+    if (!sidebarUserLocked) {
+      setSidebarCollapsed(shellWidth < 1200)
+    }
+  }, [shellWidth, sidebarUserLocked])
+
+  // Manual toggle: lock to user preference until next resize crosses the threshold
+  const handleSidebarToggle = useCallback((collapsed: boolean) => {
+    setSidebarCollapsed(collapsed)
+    setSidebarUserLocked(true)
+    // Auto-unlock if they resize back to a clear breakpoint
+  }, [])
   const [environment,   setEnvironment]   = useState<EnvironmentSettings>({
     floor:       true,
     walls:       true,
@@ -360,6 +378,7 @@ export function KinLabShell({
       <style dangerouslySetInnerHTML={{ __html: SHELL_CSS }} />
 
       <div
+        ref={shellRef}
         style={{
           display:       'flex',
           flexDirection: 'column',
@@ -415,6 +434,7 @@ export function KinLabShell({
             onObjectTypeAdd={type => console.log('add object:', type)}
             onCustomObjectCreate={() => console.log('custom object')}
             collapsed={sidebarCollapsed}
+            onCollapsedChange={handleSidebarToggle}
           />
 
           {/* ── Center column ─────────────────────────────────────── */}
