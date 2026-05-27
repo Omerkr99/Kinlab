@@ -38,10 +38,15 @@ interface Props {
   onBodySelect?:  (index: number | null) => void
   /** Physics event bus — used for collision flash highlight [KAN-95] */
   eventBus?:      PhysicsEventBus
+  /** Draw a subtle grid overlay on the canvas */
+  gridEnabled?:   boolean
+  /** Snap dragged bodies to the nearest grid cell */
+  snapEnabled?:   boolean
 }
 
-const VEL_SCALE     = 5
+const VEL_SCALE      = 5
 const FLASH_DURATION = 400  // ms
+const GRID_SIZE      = 50   // px between grid lines
 
 /**
  * Draw a compact scale ruler in the bottom-left corner.
@@ -97,11 +102,26 @@ function drawScaleRuler(ctx: CanvasRenderingContext2D, scale: PhysicsScale): voi
   ctx.textAlign = 'left'  // reset
 }
 
+/** Draw a subtle dot-grid over the canvas background. */
+function drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+  ctx.save()
+  ctx.strokeStyle = 'rgba(0,0,0,0.07)'
+  ctx.lineWidth = 1
+  for (let x = GRID_SIZE; x < w; x += GRID_SIZE) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke()
+  }
+  for (let y = GRID_SIZE; y < h; y += GRID_SIZE) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke()
+  }
+  ctx.restore()
+}
+
 function drawWorld(
-  canvas:   HTMLCanvasElement,
-  world:    World,
-  scale:    PhysicsScale,
-  flashMap: Map<number, number>,  // bodyIndex → flash start (performance.now())
+  canvas:      HTMLCanvasElement,
+  world:       World,
+  scale:       PhysicsScale,
+  flashMap:    Map<number, number>,  // bodyIndex → flash start (performance.now())
+  gridEnabled: boolean,
 ): void {
   const ctx = canvas.getContext('2d')!
   ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -109,6 +129,9 @@ function drawWorld(
   // Background
   ctx.fillStyle = '#f8f9fa'
   ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+  // Grid overlay (drawn before all bodies so bodies sit on top)
+  if (gridEnabled) drawGrid(ctx, canvas.width, canvas.height)
 
   // Floor
   ctx.strokeStyle = '#555'
@@ -217,16 +240,22 @@ export function WorldCanvas({
   simSpeed = 1,
   onBodySelect,
   eventBus,
+  gridEnabled = false,
+  snapEnabled = false,
 }: Props) {
-  const canvasRef   = useRef<HTMLCanvasElement>(null)
-  const scaleRef    = useRef<PhysicsScale>(scale)
-  const simSpeedRef = useRef<number>(simSpeed)
+  const canvasRef      = useRef<HTMLCanvasElement>(null)
+  const scaleRef       = useRef<PhysicsScale>(scale)
+  const simSpeedRef    = useRef<number>(simSpeed)
+  const gridEnabledRef = useRef<boolean>(gridEnabled)
+  const snapEnabledRef = useRef<boolean>(snapEnabled)
 
   // Flash map: bodyIndex → performance.now() when flash started (KAN-95)
   const flashMapRef = useRef<Map<number, number>>(new Map())
 
-  scaleRef.current    = scale     // always up-to-date inside the rAF loop
-  simSpeedRef.current = simSpeed  // updated via ref — never restarts the loop [KAN-92]
+  scaleRef.current       = scale        // always up-to-date inside the rAF loop
+  simSpeedRef.current    = simSpeed     // updated via ref — never restarts the loop [KAN-92]
+  gridEnabledRef.current = gridEnabled  // ref-tracked so rAF loop sees latest value
+  snapEnabledRef.current = snapEnabled
 
   // Subscribe to physics events for flash highlight (KAN-95)
   useEffect(() => {
@@ -284,11 +313,15 @@ export function WorldCanvas({
         if (b) recorder.record(world.time, b.x, FLOOR_Y - b.y, b.vx, -b.vy, b.ax, -b.ay)
       }
 
-      drawWorld(canvas, world, scaleRef.current, flashMapRef.current)
+      drawWorld(canvas, world, scaleRef.current, flashMapRef.current, gridEnabledRef.current)
       rafId = requestAnimationFrame(loop)
     }
 
     rafId = requestAnimationFrame(loop)
+
+    // Snap a coordinate to the nearest grid line
+    const snap = (v: number) =>
+      snapEnabledRef.current ? Math.round(v / GRID_SIZE) * GRID_SIZE : v
 
     // Mouse events
     const onDown = (e: MouseEvent) => {
@@ -298,12 +331,12 @@ export function WorldCanvas({
         interaction.startDrag(b)
         onBodySelect?.(world.bodies.indexOf(b))
       } else {
-        recorder.reset()
-        recorder.start()
+        // Background click: deselect only — do NOT silently wipe the recording.
+        // Users reset data intentionally via the Reset button in SimControlBar.
         onBodySelect?.(null)
       }
     }
-    const onMove = (e: MouseEvent) => interaction.updateDrag(e.offsetX, e.offsetY)
+    const onMove = (e: MouseEvent) => interaction.updateDrag(snap(e.offsetX), snap(e.offsetY))
     const onUp = () => interaction.endDrag()
 
     canvas.addEventListener('mousedown', onDown)

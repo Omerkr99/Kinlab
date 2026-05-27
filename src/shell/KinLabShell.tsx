@@ -492,6 +492,8 @@ export function KinLabShell({
                     simSpeed={simSpeed}
                     onBodySelect={handleBodySelect}
                     eventBus={eventBus}
+                    gridEnabled={gridEnabled}
+                    snapEnabled={snapEnabled}
                   />
                 </CanvasArea>
 
