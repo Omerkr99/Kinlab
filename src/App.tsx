@@ -28,15 +28,31 @@ world.addBody(BodyFactory.circle({}, 0))  // KAN-97: use BodyFactory for initial
 const recorder    = new DataRecorder()
 const interaction = new InteractionLayer()
 
-/** Convert engine gravity (px/s²) → SI (m/s²) given a scale, then back */
+/**
+ * Convert engine gravity (px/s²) across a scale change.
+ *
+ * Strategy:
+ *  1. Convert currentEngine gravity to SI (m/s²):
+ *     - Calibrated scale (cm, m, custom): ms2 = enginePx * metersPerUnit / pixelsPerUnit
+ *     - px scale (no real-world tie): value was stored as m/s² by convention
+ *       (gravityMs2ToEngine for px just returns ms2 unchanged), so ms2 = currentEngine
+ *  2. Convert ms2 → engine units for the new scale via gravityMs2ToEngine.
+ *
+ * Example: px Earth (9.8) → m scale = 9.8 m/s² × (100 px/m) = 980 px/s² ✓
+ *          m Earth (980) → px scale = 980 × (1 / 100) = 9.8 → gravityMs2ToEngine(9.8, px) = 9.8 ✓
+ *
+ * KAN-103: Previously returned `currentEngine` unchanged when oldScale.metersPerUnit == null,
+ *          which left gravity at 9.8 px/s² after switching to m mode (≈ zero-gravity effect).
+ */
 function preserveGravity(
   currentEngine: number,
   oldScale: PhysicsScale,
   newScale: PhysicsScale,
 ): number {
-  // px mode: treat gravity as m/s² directly
-  if (oldScale.metersPerUnit == null) return currentEngine
-  const ms2 = currentEngine * oldScale.metersPerUnit / oldScale.pixelsPerUnit
+  // Derive SI value regardless of which scale we're coming from
+  const ms2 = oldScale.metersPerUnit == null
+    ? currentEngine                                                    // px mode: stored as m/s²
+    : currentEngine * oldScale.metersPerUnit / oldScale.pixelsPerUnit // calibrated: convert back to m/s²
   return gravityMs2ToEngine(ms2, newScale)
 }
 
