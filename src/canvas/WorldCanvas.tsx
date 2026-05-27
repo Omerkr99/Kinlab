@@ -184,13 +184,21 @@ function drawWorld(
       }
     }
 
-    // Ball — per-body color palette (KAN-97)
-    const [light, dark] = BODY_PALETTE[bi % BODY_PALETTE.length]
+    // Ball — use b.color (user-set) or fall back to per-body palette (KAN-107)
     const r = b.radius ?? BALL_RADIUS
-    const gradient = ctx.createRadialGradient(b.x - 6, b.y - 6, 2, b.x, b.y, r)
-    gradient.addColorStop(0, light)
-    gradient.addColorStop(1, dark)
-    ctx.fillStyle = gradient
+    if (b.color) {
+      // Flat fill with user-chosen color; a subtle radial highlight keeps depth.
+      const gradient = ctx.createRadialGradient(b.x - r * 0.35, b.y - r * 0.35, r * 0.1, b.x, b.y, r)
+      gradient.addColorStop(0, b.color + 'cc')  // slightly transparent centre highlight
+      gradient.addColorStop(1, b.color)
+      ctx.fillStyle = gradient
+    } else {
+      const [light, dark] = BODY_PALETTE[bi % BODY_PALETTE.length]
+      const gradient = ctx.createRadialGradient(b.x - 6, b.y - 6, 2, b.x, b.y, r)
+      gradient.addColorStop(0, light)
+      gradient.addColorStop(1, dark)
+      ctx.fillStyle = gradient
+    }
     ctx.beginPath()
     ctx.arc(b.x, b.y, r, 0, Math.PI * 2)
     ctx.fill()
