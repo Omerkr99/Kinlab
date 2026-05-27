@@ -27,6 +27,7 @@ import { useState, useCallback } from 'react'
 import type { World } from '../engine'
 import type { DataRecorder } from '../recorder'
 import type { PlayState } from './shellTypes'
+import type { PhysicsScale } from '../units/PhysicsScale'
 import { usePoll, useFps } from './hooks'
 import { FLOOR_Y } from '../constants'
 
@@ -39,6 +40,8 @@ interface ObjectPropertiesPanelProps {
   onDelete?:      (index: number) => void
   onPlayStateChange: (s: PlayState) => void
   interaction:    { resume(): void; pause(): void }
+  /** KAN-108: current physics scale — drives position/velocity/accel unit labels */
+  scale:          PhysicsScale
 }
 
 // ── Property input ────────────────────────────────────────────────────────────
@@ -173,7 +176,7 @@ const OBJECT_COLORS: Record<number, string> = {
 }
 
 export function ObjectPropertiesPanel({
-  bodyIndex, world, recorder, playState, onClose, onDelete,
+  bodyIndex, world, recorder, playState, onClose, onDelete, scale,
 }: ObjectPropertiesPanelProps) {
   // Poll the selected body's live state
   const getBodySnap = useCallback(() => {
@@ -201,7 +204,7 @@ export function ObjectPropertiesPanel({
   if (bodyIndex === null || !snap) return null
 
   const b         = world.bodies[bodyIndex]
-  const typeLabel = 'Circle'   // future: infer from Body.type
+  const typeLabel = b?.type ?? 'Circle'   // KAN-111: read Body.type; default 'Circle'
   const typeColor = OBJECT_COLORS[bodyIndex % 3] ?? '#2563EB'
 
   return (
@@ -278,9 +281,9 @@ export function ObjectPropertiesPanel({
         {/* Position */}
         <PropSection title="Position">
           <PropGrid>
-            <PropInput id="prop-x" label="x" unit="m" value={snap.x}
+            <PropInput id="prop-x" label="x" unit={scale.unitSymbol} value={snap.x}
               onChange={v => { if (b) b.x = v }} />
-            <PropInput id="prop-y" label="y" unit="m" value={snap.y}
+            <PropInput id="prop-y" label="y" unit={scale.unitSymbol} value={snap.y}
               onChange={v => { if (b) b.y = FLOOR_Y - v }} />
           </PropGrid>
         </PropSection>
@@ -288,9 +291,9 @@ export function ObjectPropertiesPanel({
         {/* Velocity */}
         <PropSection title="Velocity">
           <PropGrid>
-            <PropInput id="prop-vx" label="vx" unit="m/s" value={snap.vx}
+            <PropInput id="prop-vx" label="vx" unit={`${scale.unitSymbol}/s`} value={snap.vx}
               onChange={v => { if (b) b.vx = v }} />
-            <PropInput id="prop-vy" label="vy" unit="m/s" value={snap.vy}
+            <PropInput id="prop-vy" label="vy" unit={`${scale.unitSymbol}/s`} value={snap.vy}
               onChange={v => { if (b) b.vy = -v }} />
           </PropGrid>
         </PropSection>
@@ -298,8 +301,8 @@ export function ObjectPropertiesPanel({
         {/* Acceleration (read-only) */}
         <PropSection title="Acceleration">
           <PropGrid>
-            <PropInput id="prop-ax" label="ax" unit="m/s²" value={snap.ax} readOnly />
-            <PropInput id="prop-ay" label="ay" unit="m/s²" value={snap.ay} readOnly />
+            <PropInput id="prop-ax" label="ax" unit={`${scale.unitSymbol}/s²`} value={snap.ax} readOnly />
+            <PropInput id="prop-ay" label="ay" unit={`${scale.unitSymbol}/s²`} value={snap.ay} readOnly />
           </PropGrid>
         </PropSection>
 

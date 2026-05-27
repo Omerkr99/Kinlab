@@ -537,6 +537,7 @@ export function KinLabShell({
               interaction={interaction}
               onClose={() => setSelectedBody(null)}
               onDelete={handleBodyDelete}
+              scale={scale}
             />
           )}
         </main>
