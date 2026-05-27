@@ -14,6 +14,39 @@ import { FLOOR_Y, CANVAS_W, CANVAS_H, BALL_RADIUS } from '../constants'
 import { PhysicsScale, DEFAULT_SCALE } from '../units/PhysicsScale'
 import type { PhysicsEventBus } from '../engine/PhysicsEvents'
 import type { ActiveTool } from '../shell/shellTypes'
+import { useTheme } from '../context/ThemeContext'
+
+// ── KAN-110: Canvas theme tokens ─────────────────────────────────────────────
+
+interface CanvasTheme {
+  background:  string   // canvas fill
+  floorStroke: string   // floor line
+  floorLabel:  string   // floor text
+  gridStroke:  string   // grid line rgba
+  rulerBg:     string   // ruler backdrop
+  rulerText:   string   // ruler label
+  shadowFill:  string   // body shadow under feet
+}
+
+const CANVAS_LIGHT: CanvasTheme = {
+  background:  '#f8f9fa',
+  floorStroke: '#555',
+  floorLabel:  '#999',
+  gridStroke:  'rgba(0,0,0,0.07)',
+  rulerBg:     'rgba(255,255,255,0.7)',
+  rulerText:   '#444',
+  shadowFill:  'rgba(0,0,0,0.08)',
+}
+
+const CANVAS_DARK: CanvasTheme = {
+  background:  '#111827',
+  floorStroke: '#6B7280',
+  floorLabel:  '#6B7280',
+  gridStroke:  'rgba(255,255,255,0.06)',
+  rulerBg:     'rgba(0,0,0,0.55)',
+  rulerText:   '#9CA3AF',
+  shadowFill:  'rgba(0,0,0,0.25)',
+}
 
 // Per-body color palette — light/dark gradient stops for each body (KAN-97)
 const BODY_PALETTE: Array<[string, string]> = [
@@ -69,7 +102,7 @@ const GRID_SIZE      = 50   // px between grid lines
  * Draw a compact scale ruler in the bottom-left corner.
  * Skipped in px mode (no real-world calibration).
  */
-function drawScaleRuler(ctx: CanvasRenderingContext2D, scale: PhysicsScale): void {
+function drawScaleRuler(ctx: CanvasRenderingContext2D, scale: PhysicsScale, ct: CanvasTheme): void {
   if (scale.id === 'px') return
 
   const { pixelsPerUnit, unitSymbol } = scale
@@ -92,17 +125,16 @@ function drawScaleRuler(ctx: CanvasRenderingContext2D, scale: PhysicsScale): voi
   const y0 = FLOOR_Y - 22
 
   // Ruler background
-  ctx.fillStyle = 'rgba(255,255,255,0.7)'
+  ctx.fillStyle = ct.rulerBg
   ctx.fillRect(x0 - 3, y0 - 14, rulerPx + 6, 22)
 
-  // Ruler line
-  ctx.strokeStyle = '#555'
+  // Ruler line + ticks
+  ctx.strokeStyle = ct.rulerText
   ctx.lineWidth = 1.5
   ctx.beginPath()
   ctx.moveTo(x0, y0); ctx.lineTo(x0 + rulerPx, y0)
   ctx.stroke()
 
-  // End ticks
   ctx.beginPath()
   ctx.moveTo(x0, y0 - 5);            ctx.lineTo(x0, y0 + 5)
   ctx.moveTo(x0 + rulerPx, y0 - 5); ctx.lineTo(x0 + rulerPx, y0 + 5)
@@ -112,7 +144,7 @@ function drawScaleRuler(ctx: CanvasRenderingContext2D, scale: PhysicsScale): voi
   const label = rulerUnits === 1
     ? `1 ${unitSymbol}`
     : `${rulerUnits} ${unitSymbol}`
-  ctx.fillStyle = '#444'
+  ctx.fillStyle = ct.rulerText
   ctx.font = '10px sans-serif'
   ctx.textAlign = 'center'
   ctx.fillText(label, x0 + rulerPx / 2, y0 - 7)
@@ -120,9 +152,9 @@ function drawScaleRuler(ctx: CanvasRenderingContext2D, scale: PhysicsScale): voi
 }
 
 /** Draw a subtle dot-grid over the canvas background. */
-function drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number): void {
+function drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number, ct: CanvasTheme): void {
   ctx.save()
-  ctx.strokeStyle = 'rgba(0,0,0,0.07)'
+  ctx.strokeStyle = ct.gridStroke
   ctx.lineWidth = 1
   for (let x = GRID_SIZE; x < w; x += GRID_SIZE) {
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke()
@@ -139,19 +171,20 @@ function drawWorld(
   scale:       PhysicsScale,
   flashMap:    Map<number, number>,  // bodyIndex → flash start (performance.now())
   gridEnabled: boolean,
+  ct:          CanvasTheme,          // KAN-110: theme tokens
 ): void {
   const ctx = canvas.getContext('2d')!
   ctx.clearRect(0, 0, canvas.width, canvas.height)
 
   // Background
-  ctx.fillStyle = '#f8f9fa'
+  ctx.fillStyle = ct.background
   ctx.fillRect(0, 0, canvas.width, canvas.height)
 
   // Grid overlay (drawn before all bodies so bodies sit on top)
-  if (gridEnabled) drawGrid(ctx, canvas.width, canvas.height)
+  if (gridEnabled) drawGrid(ctx, canvas.width, canvas.height, ct)
 
   // Floor
-  ctx.strokeStyle = '#555'
+  ctx.strokeStyle = ct.floorStroke
   ctx.lineWidth = 2
   ctx.beginPath()
   ctx.moveTo(0, FLOOR_Y)
@@ -159,7 +192,7 @@ function drawWorld(
   ctx.stroke()
 
   // Floor label
-  ctx.fillStyle = '#999'
+  ctx.fillStyle = ct.floorLabel
   ctx.font = '11px sans-serif'
   ctx.fillText(`floor (y = ${FLOOR_Y})`, 8, FLOOR_Y - 5)
 
@@ -171,7 +204,7 @@ function drawWorld(
 
     // Shadow — use actual body radius (KAN-97)
     const bRadius = b.radius ?? BALL_RADIUS
-    ctx.fillStyle = 'rgba(0,0,0,0.08)'
+    ctx.fillStyle = ct.shadowFill
     ctx.beginPath()
     ctx.ellipse(b.x, FLOOR_Y, bRadius * 0.8, 6, 0, 0, Math.PI * 2)
     ctx.fill()
@@ -289,7 +322,7 @@ function drawWorld(
   }
 
   // Scale ruler overlay
-  drawScaleRuler(ctx, scale)
+  drawScaleRuler(ctx, scale, ct)
 }
 
 /** Impulse scale for the force tool: px dragged × FORCE_SCALE = px/s velocity kick */
@@ -320,9 +353,15 @@ export function WorldCanvas({
   const forceDragRef        = useRef<{ bi: number; x: number; y: number } | null>(null)
   /** KAN-101: latest onBodyDelete callback (ref avoids stale closure) */
   const onBodyDeleteRef     = useRef(onBodyDelete)
+  /** KAN-110: theme ref so drawWorld picks up changes without loop restart */
+  const isDarkRef           = useRef<boolean>(false)
 
   // Flash map: bodyIndex → performance.now() when flash started (KAN-95)
   const flashMapRef = useRef<Map<number, number>>(new Map())
+
+  // KAN-110: read isDark from ThemeContext; keep ref in sync
+  const { isDark } = useTheme()
+  isDarkRef.current = isDark
 
   scaleRef.current           = scale           // always up-to-date inside the rAF loop
   simSpeedRef.current        = simSpeed        // updated via ref — never restarts the loop [KAN-92]
@@ -403,7 +442,8 @@ export function WorldCanvas({
         if (b) recorder.record(world.time, b.x, FLOOR_Y - b.y, b.vx, -b.vy, b.ax, -b.ay)
       }
 
-      drawWorld(canvas, world, scaleRef.current, flashMapRef.current, gridEnabledRef.current)
+      drawWorld(canvas, world, scaleRef.current, flashMapRef.current, gridEnabledRef.current,
+        isDarkRef.current ? CANVAS_DARK : CANVAS_LIGHT)
       rafId = requestAnimationFrame(loop)
     }
 
