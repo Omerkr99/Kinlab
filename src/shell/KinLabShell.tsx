@@ -446,6 +446,7 @@ export function KinLabShell({
                 {/* Canvas + Bottom panels */}
                 <CanvasArea
                   scale={scale}
+                  zoom={zoom}
                   onCursorMove={setCursorPos}
                   style={{ flex: 1, minHeight: 0 }}
                 >
@@ -454,6 +455,7 @@ export function KinLabShell({
                     recorder={recorder}
                     interaction={interaction}
                     scale={scale}
+                    simSpeed={simSpeed}
                     onBodySelect={handleBodySelect}
                   />
                 </CanvasArea>
