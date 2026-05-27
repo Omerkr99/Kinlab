@@ -506,6 +506,8 @@ export function KinLabShell({
                     gridEnabled={gridEnabled}
                     snapEnabled={snapEnabled}
                     selectedBodyIndex={selectedBody}
+                    activeTool={activeTool}
+                    onBodyDelete={handleBodyDelete}
                   />
                 </CanvasArea>
 
