@@ -20,6 +20,8 @@ export interface BodyState {
   radius?:  number  // collision radius (px) — default BALL_RADIUS
   // KAN-111: display type label — 'Circle' by default
   type?:    string
+  // KAN-107: user-chosen hex color for canvas rendering; undefined → use palette
+  color?:   string
 }
 
 export class Body {
@@ -41,6 +43,7 @@ export class Body {
   inertia = 1           // moment of inertia
   radius  = BALL_RADIUS // collision radius
   type    = 'Circle'   // KAN-111: display type — 'Circle' by default
+  color?: string       // KAN-107: user-chosen hex color; undefined → use canvas palette
 
   constructor(init: Partial<BodyState> = {}) {
     Object.assign(this, init)

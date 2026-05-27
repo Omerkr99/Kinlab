@@ -316,17 +316,23 @@ export function ObjectPropertiesPanel({
           </PropGrid>
         </PropSection>
 
-        {/* Appearance */}
+        {/* Appearance — KAN-107: color picker writes directly to b.color */}
         <PropSection title="Appearance">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 13, color: '#374151' }}>Color</span>
-            <div style={{
-              width: 28, height: 28, borderRadius: 6,
-              background: typeColor,
-              border: '1px solid #E5E7EB', cursor: 'pointer',
-            }} />
+            <input
+              type="color"
+              aria-label="Body color"
+              value={b?.color ?? typeColor}
+              onChange={e => { if (b) b.color = e.target.value }}
+              style={{
+                width: 28, height: 28, borderRadius: 6,
+                border: '1px solid #E5E7EB', cursor: 'pointer',
+                padding: 1, background: 'transparent',
+              }}
+            />
             <span style={{ fontSize: 12, color: '#9CA3AF', fontFamily: 'monospace' }}>
-              {typeColor}
+              {b?.color ?? typeColor}
             </span>
           </div>
         </PropSection>
