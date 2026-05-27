@@ -14,10 +14,17 @@
 // ── Event types ───────────────────────────────────────────────────────────────
 
 export type PhysicsEventType =
-  | 'floor-bounce'   // ball hit the floor and reversed vy
-  | 'wall-bounce'    // ball hit a left/right wall and reversed vx
-  | 'rest'           // ball velocity clamped to zero (came to rest)
-  | 'step'           // one World.step() completed (every frame)
+  | 'floor-bounce'           // ball hit the floor and reversed vy
+  | 'wall-bounce'            // ball hit a left/right wall and reversed vx
+  | 'rest'                   // ball velocity clamped to zero (came to rest)
+  | 'step'                   // one World.step() completed (every frame)
+  // Day 9 additions
+  | 'spring-max-extension'   // spring stretched beyond threshold
+  | 'spring-rest'            // spring near natural length (|ext| < ε)
+  | 'impulse'                // discrete impulse recorded at collision
+  // Day 10 additions
+  | 'collision'              // two bodies collided and impulse was resolved
+  | 'constraint-violation'   // a constraint's error exceeded a threshold
 
 // ── Event payload ─────────────────────────────────────────────────────────────
 
@@ -33,6 +40,22 @@ export interface PhysicsEvent {
   /** Body velocity at event (px/s), after bounce correction */
   vx?: number
   vy?: number
+  // Day 9 additions
+  /** Impulse magnitude applied at collision: mass × |Δv| (Day 9) */
+  impulse?: number
+  /** Index of the spring in a springs array (for spring events) */
+  springIndex?: number
+  /** Spring extension in px at time of event (negative = compressed) */
+  extension?: number
+  // Day 10 additions
+  /** Index of the second body in a collision pair (for 'collision' events) */
+  bodyIndexB?: number
+  /** Penetration depth at moment of collision (px) */
+  penetrationDepth?: number
+  /** Index of the constraint that was violated (for 'constraint-violation' events) */
+  constraintIndex?: number
+  /** Constraint error magnitude at time of event (px) */
+  violation?: number
 }
 
 // ── Handler type ──────────────────────────────────────────────────────────────

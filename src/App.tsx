@@ -9,7 +9,9 @@ import { GravitySlider } from './components/GravitySlider'
 import { DataTable } from './components/DataTable'
 import { CsvExportButton } from './components/CsvExportButton'
 import { ScaleControl } from './components/ScaleControl'
-import { Day7Panel } from './components/Day7Panel'
+import { Day9Panel }        from './components/Day9Panel'
+import { ForcesDemoPanel } from './components/ForcesDemoPanel'
+import { Day10Panel }       from './components/Day10Panel'
 import { GraphPopup } from './components/GraphPopup'
 import {
   PhysicsScale, DEFAULT_SCALE,
@@ -153,8 +155,12 @@ export default function App() {
         </div>
       </div>
 
-      {/* Day 7 Demo Panel — GraphEngine + GraphCanvas showcase */}
-      <Day7Panel />
+      {/* Day 9 Spring Demo */}
+      <Day9Panel />
+      {/* Day 9 Forces Demo — all three IForce types */}
+      <ForcesDemoPanel />
+      {/* Day 10 — Collisions + Rotation + Constraints */}
+      <Day10Panel />
     </div>
   )
 }
