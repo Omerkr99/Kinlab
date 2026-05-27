@@ -1,9 +1,18 @@
+/**
+ * WorldCanvas — simulation canvas with rAF loop
+ *
+ * KAN-95: Collision flash highlight
+ *   - Subscribes to floor-bounce, wall-bounce, collision events via PhysicsEventBus
+ *   - Each hit triggers a 400ms glowing ring on the affected body that fades out
+ *   - Flash state lives in a Map<bodyIndex, flashStartMs> ref (no React re-renders)
+ */
 import { useRef, useEffect } from 'react'
 import { World } from '../engine'
 import { DataRecorder } from '../recorder'
 import { InteractionLayer } from '../engine'
 import { FLOOR_Y, CANVAS_W, CANVAS_H, BALL_RADIUS } from '../constants'
 import { PhysicsScale, DEFAULT_SCALE } from '../units/PhysicsScale'
+import type { PhysicsEventBus } from '../engine/PhysicsEvents'
 
 interface Props {
   world:          World
@@ -17,9 +26,12 @@ interface Props {
   simSpeed?:      number
   /** Called when the user clicks a body (index) or the background (null) */
   onBodySelect?:  (index: number | null) => void
+  /** Physics event bus — used for collision flash highlight [KAN-95] */
+  eventBus?:      PhysicsEventBus
 }
 
-const VEL_SCALE = 5
+const VEL_SCALE     = 5
+const FLASH_DURATION = 400  // ms
 
 /**
  * Draw a compact scale ruler in the bottom-left corner.
@@ -34,11 +46,9 @@ function drawScaleRuler(ctx: CanvasRenderingContext2D, scale: PhysicsScale): voi
   let rulerPx    = pixelsPerUnit
   let rulerUnits = 1
   if (rulerPx > 150) {
-    // E.g. if scale is huge, show half a unit
     rulerPx    = pixelsPerUnit / 2
     rulerUnits = 0.5
   } else if (rulerPx < 20) {
-    // E.g. very small unit — show 10 units
     rulerPx    = pixelsPerUnit * 10
     rulerUnits = 10
   } else if (rulerPx < 40) {
@@ -77,7 +87,12 @@ function drawScaleRuler(ctx: CanvasRenderingContext2D, scale: PhysicsScale): voi
   ctx.textAlign = 'left'  // reset
 }
 
-function drawWorld(canvas: HTMLCanvasElement, world: World, scale: PhysicsScale): void {
+function drawWorld(
+  canvas:   HTMLCanvasElement,
+  world:    World,
+  scale:    PhysicsScale,
+  flashMap: Map<number, number>,  // bodyIndex → flash start (performance.now())
+): void {
   const ctx = canvas.getContext('2d')!
   ctx.clearRect(0, 0, canvas.width, canvas.height)
 
@@ -98,13 +113,42 @@ function drawWorld(canvas: HTMLCanvasElement, world: World, scale: PhysicsScale)
   ctx.font = '11px sans-serif'
   ctx.fillText(`floor (y = ${FLOOR_Y})`, 8, FLOOR_Y - 5)
 
+  const now = performance.now()
+
   // Bodies
-  for (const b of world.bodies) {
+  for (let bi = 0; bi < world.bodies.length; bi++) {
+    const b = world.bodies[bi]
+
     // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.08)'
     ctx.beginPath()
     ctx.ellipse(b.x, FLOOR_Y, BALL_RADIUS * 0.8, 6, 0, 0, Math.PI * 2)
     ctx.fill()
+
+    // ── Collision flash ring (KAN-95) ────────────────────────────────────────
+    const flashStart = flashMap.get(bi)
+    if (flashStart !== undefined) {
+      const elapsed = now - flashStart
+      if (elapsed < FLASH_DURATION) {
+        const t     = elapsed / FLASH_DURATION        // 0 → 1
+        const alpha = (1 - t) * 0.85                  // fade out
+        const radius = BALL_RADIUS + 4 + t * 12       // expand outward
+
+        ctx.save()
+        ctx.globalAlpha = alpha
+        ctx.shadowColor  = '#FBBF24'
+        ctx.shadowBlur   = 16
+        ctx.strokeStyle  = '#F59E0B'
+        ctx.lineWidth    = 3 - t * 2
+        ctx.beginPath()
+        ctx.arc(b.x, b.y, radius, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.restore()
+      } else {
+        // Flash expired — clean up
+        flashMap.delete(bi)
+      }
+    }
 
     // Ball
     const gradient = ctx.createRadialGradient(b.x - 6, b.y - 6, 2, b.x, b.y, BALL_RADIUS)
@@ -147,12 +191,43 @@ export function WorldCanvas({
   scale = DEFAULT_SCALE,
   simSpeed = 1,
   onBodySelect,
+  eventBus,
 }: Props) {
   const canvasRef   = useRef<HTMLCanvasElement>(null)
   const scaleRef    = useRef<PhysicsScale>(scale)
   const simSpeedRef = useRef<number>(simSpeed)
+
+  // Flash map: bodyIndex → performance.now() when flash started (KAN-95)
+  const flashMapRef = useRef<Map<number, number>>(new Map())
+
   scaleRef.current    = scale     // always up-to-date inside the rAF loop
   simSpeedRef.current = simSpeed  // updated via ref — never restarts the loop [KAN-92]
+
+  // Subscribe to physics events for flash highlight (KAN-95)
+  useEffect(() => {
+    if (!eventBus) return
+
+    const triggerFlash = (bodyIndex: number) => {
+      flashMapRef.current.set(bodyIndex, performance.now())
+    }
+
+    const onFloorBounce = (e: { bodyIndex: number }) => triggerFlash(e.bodyIndex)
+    const onWallBounce  = (e: { bodyIndex: number }) => triggerFlash(e.bodyIndex)
+    const onCollision   = (e: { bodyIndex: number; bodyIndexB?: number }) => {
+      triggerFlash(e.bodyIndex)
+      if (e.bodyIndexB !== undefined) triggerFlash(e.bodyIndexB)
+    }
+
+    eventBus.on('floor-bounce', onFloorBounce)
+    eventBus.on('wall-bounce',  onWallBounce)
+    eventBus.on('collision',    onCollision)
+
+    return () => {
+      eventBus.off('floor-bounce', onFloorBounce)
+      eventBus.off('wall-bounce',  onWallBounce)
+      eventBus.off('collision',    onCollision)
+    }
+  }, [eventBus])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -175,7 +250,7 @@ export function WorldCanvas({
         if (b) recorder.record(world.time, b.x, FLOOR_Y - b.y, b.vx, -b.vy, b.ax, -b.ay)
       }
 
-      drawWorld(canvas, world, scaleRef.current)
+      drawWorld(canvas, world, scaleRef.current, flashMapRef.current)
       rafId = requestAnimationFrame(loop)
     }
 
