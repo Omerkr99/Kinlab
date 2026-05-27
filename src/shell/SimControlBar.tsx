@@ -6,24 +6,22 @@
  * Right:  Gravity [toggle] | Grid [toggle] | Snap [toggle]
  *
  * Wires into: World, DataRecorder, InteractionLayer
- * All physics resets (ball position) happen here via resetBall().
+ * All physics resets (body positions) happen here via resetAllBodies() + BodyFactory.
  */
 import { useState } from 'react'
 import { Toggle } from '../components/ui/Toggle'
 import { type PlayState } from './shellTypes'
 import { usePoll } from './hooks'
 import type { World } from '../engine'
+import { BodyFactory } from '../engine'
 import type { DataRecorder } from '../recorder'
 import type { InteractionLayer } from '../engine'
 import { FLOOR_Y } from '../constants'
 
-const START_X = 300
-const START_Y = 50
-
-function resetBall(world: World): void {
+/** Reset all bodies to their canonical start positions (KAN-97) */
+function resetAllBodies(world: World): void {
   world.time = 0
-  const b = world.bodies[0]
-  if (b) { b.x = START_X; b.y = START_Y; b.vx = 0; b.vy = 0; b.ax = 0; b.ay = 0 }
+  world.bodies.forEach((b, i) => BodyFactory.reset(b, i))
 }
 
 interface SimControlBarProps {
@@ -123,7 +121,7 @@ export function SimControlBar({
   const time = usePoll(() => world.time, 80)
 
   const handlePlay = () => {
-    resetBall(world)
+    resetAllBodies(world)
     recorder.reset()
     recorder.start()
     const b0 = world.bodies[0]
@@ -140,7 +138,7 @@ export function SimControlBar({
   const handleReset = () => {
     interaction.pause()
     recorder.reset()
-    resetBall(world)
+    resetAllBodies(world)
     onPlayStateChange('idle')
     onAfterReset?.()
   }

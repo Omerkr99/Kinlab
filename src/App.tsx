@@ -10,7 +10,7 @@
  * Physics logic, simulation state, and layout all live in KinLabShell.
  */
 import { useState, useEffect } from 'react'
-import { World, Body, InteractionLayer } from './engine'
+import { World, BodyFactory, InteractionLayer } from './engine'
 import { PhysicsEventBus } from './engine/PhysicsEvents'
 import { DataRecorder } from './recorder'
 import { GraphPopup } from './components/GraphPopup'
@@ -24,7 +24,7 @@ import {
 const eventBus    = new PhysicsEventBus()
 const world       = new World()
 world.bus         = eventBus
-world.addBody(new Body({ x: 300, y: 50 }))
+world.addBody(BodyFactory.circle({}, 0))  // KAN-97: use BodyFactory for initial body
 const recorder    = new DataRecorder()
 const interaction = new InteractionLayer()
 
