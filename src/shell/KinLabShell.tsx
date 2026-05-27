@@ -449,13 +449,14 @@ export function KinLabShell({
             onToolChange={setActiveTool}
             environment={environment}
             onEnvChange={setEnvironment}
-            onObjectTypeAdd={_type => {
+            onObjectTypeAdd={type => {
               const idx = world.bodies.length
-              const b = BodyFactory.circle({}, idx)
+              // KAN-102: dispatch to correct factory method by type
+              const b = BodyFactory.fromType(type, idx)
               world.addBody(b)
               world.collisionDetection = world.bodies.length > 1
               setSelectedBody(idx)
-              toast.success(`Body ${idx + 1} added`, { duration: 2000 })
+              toast.success(`${b.type} ${idx + 1} added`, { duration: 2000 })
             }}
             onCustomObjectCreate={() => console.log('custom object')}
             collapsed={sidebarCollapsed}
