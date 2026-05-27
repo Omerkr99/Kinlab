@@ -42,6 +42,11 @@ interface Props {
   gridEnabled?:   boolean
   /** Snap dragged bodies to the nearest grid cell */
   snapEnabled?:   boolean
+  /**
+   * KAN-104: which body index to record. null / undefined → record bodies[0]
+   * so single-body mode is unaffected. Updated via ref — never restarts the loop.
+   */
+  selectedBodyIndex?: number | null
 }
 
 const VEL_SCALE      = 5
@@ -250,20 +255,24 @@ export function WorldCanvas({
   eventBus,
   gridEnabled = false,
   snapEnabled = false,
+  selectedBodyIndex,
 }: Props) {
-  const canvasRef      = useRef<HTMLCanvasElement>(null)
-  const scaleRef       = useRef<PhysicsScale>(scale)
-  const simSpeedRef    = useRef<number>(simSpeed)
-  const gridEnabledRef = useRef<boolean>(gridEnabled)
-  const snapEnabledRef = useRef<boolean>(snapEnabled)
+  const canvasRef           = useRef<HTMLCanvasElement>(null)
+  const scaleRef            = useRef<PhysicsScale>(scale)
+  const simSpeedRef         = useRef<number>(simSpeed)
+  const gridEnabledRef      = useRef<boolean>(gridEnabled)
+  const snapEnabledRef      = useRef<boolean>(snapEnabled)
+  /** KAN-104: ref so loop always reads the latest selected index without re-mounting */
+  const selectedBodyIdxRef  = useRef<number | null | undefined>(selectedBodyIndex)
 
   // Flash map: bodyIndex → performance.now() when flash started (KAN-95)
   const flashMapRef = useRef<Map<number, number>>(new Map())
 
-  scaleRef.current       = scale        // always up-to-date inside the rAF loop
-  simSpeedRef.current    = simSpeed     // updated via ref — never restarts the loop [KAN-92]
-  gridEnabledRef.current = gridEnabled  // ref-tracked so rAF loop sees latest value
-  snapEnabledRef.current = snapEnabled
+  scaleRef.current          = scale           // always up-to-date inside the rAF loop
+  simSpeedRef.current       = simSpeed        // updated via ref — never restarts the loop [KAN-92]
+  gridEnabledRef.current    = gridEnabled     // ref-tracked so rAF loop sees latest value
+  snapEnabledRef.current    = snapEnabled
+  selectedBodyIdxRef.current = selectedBodyIndex  // KAN-104: keep ref in sync each render
 
   // Subscribe to physics events for flash highlight (KAN-95)
   useEffect(() => {
@@ -315,7 +324,9 @@ export function WorldCanvas({
         for (let s = 0; s < steps; s++) {
           world.step(stepDt)
         }
-        const b = world.bodies[0]
+        // KAN-104: record the selected body (falls back to bodies[0] when nothing selected)
+        const recIdx = selectedBodyIdxRef.current ?? 0
+        const b      = world.bodies[recIdx] ?? world.bodies[0]
         // Physical coordinate convention: floor = y=0, upward = positive.
         // Transform: y_phys = FLOOR_Y − canvas_y, vy_phys = −vy, ay_phys = −ay
         if (b) recorder.record(world.time, b.x, FLOOR_Y - b.y, b.vx, -b.vy, b.ax, -b.ay)
