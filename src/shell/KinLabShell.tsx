@@ -505,6 +505,7 @@ export function KinLabShell({
                     eventBus={eventBus}
                     gridEnabled={gridEnabled}
                     snapEnabled={snapEnabled}
+                    selectedBodyIndex={selectedBody}
                   />
                 </CanvasArea>
 
