@@ -13,10 +13,12 @@ import { Day9Panel }        from './components/Day9Panel'
 import { ForcesDemoPanel } from './components/ForcesDemoPanel'
 import { Day10Panel }       from './components/Day10Panel'
 import { GraphPopup } from './components/GraphPopup'
+import { AppShell }  from './components/AppShell'
 import {
   PhysicsScale, DEFAULT_SCALE,
-  gravityMs2ToEngine, gravityEngineToDisplay,
+  gravityMs2ToEngine,
 } from './units/PhysicsScale'
+import { color, space, font } from './styles/tokens'
 
 // ⚠️ OUTSIDE component — stable refs, never recreated on render
 const world       = new World()
@@ -26,7 +28,7 @@ const interaction = new InteractionLayer()
 
 /** Convert engine gravity (px/s²) to SI (m/s²) given a calibrated scale. */
 function engineToMs2(enginePxS2: number, s: PhysicsScale): number {
-  if (s.metersPerUnit == null) return enginePxS2   // px mode: treat as m/s² directly
+  if (s.metersPerUnit == null) return enginePxS2
   return enginePxS2 * s.metersPerUnit / s.pixelsPerUnit
 }
 
@@ -39,21 +41,17 @@ export default function App() {
   const [xKey,    setXKey]    = useState<SeriesKey>('time')
   const [yKey,    setYKey]    = useState<SeriesKey>('y')
   const [flipY,   setFlipY]   = useState(false)
-  const [gravity, setGravity] = useState(world.gravity)   // engine px/s²
+  const [gravity, setGravity] = useState(world.gravity)
   const [scale,   setScale]   = useState<PhysicsScale>(DEFAULT_SCALE)
 
-  /** Update engine gravity and sync slider display. */
   const handleGravity = (enginePxS2: number) => {
     world.gravity = enginePxS2
     setGravity(enginePxS2)
   }
 
   /**
-   * Change unit scale.
-   *
-   * Preserves the physical meaning of gravity across the switch:
-   *   current engine value → SI m/s² → new engine value
-   * So if user had Earth (9.8 m/s²) in any mode, it stays Earth after switching.
+   * Change unit scale, preserving physical meaning of gravity across switch.
+   * current engine value → SI m/s² → new engine value
    */
   const handleScaleChange = (newScale: PhysicsScale) => {
     const ms2       = engineToMs2(gravity, scale)
@@ -83,84 +81,92 @@ export default function App() {
       })
     }
 
-    // Respond immediately when popup requests data
     ch.onmessage = (e) => { if (e.data?.type === 'request') broadcast() }
-
-    // Also push updates every 300 ms while app is running
     const id = setInterval(broadcast, 300)
 
     return () => { clearInterval(id); ch.close() }
   }, [])
 
-  // ── Render ────────────────────────────────────────────────────────────────
-  return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', background: '#f5f6f8', minHeight: '100vh', padding: 24 }}>
+  // ── Shared section heading style (used in slots below) ───────────────────
+  const sectionLabel = {
+    fontSize:      font.size.xs,
+    fontWeight:    font.weight.semibold,
+    color:         color.text.muted,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 1,
+    marginBottom:  space[2],
+  }
 
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div style={{ marginBottom: 16 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#1a1a2e' }}>
-          🔬 KinLab
-        </h1>
-        <p style={{ margin: '4px 0 0', fontSize: 13, color: '#666' }}>
-          Interactive Physics Simulation — drag the ball, record data, analyze graphs
+  // ── Slot: Simulation ──────────────────────────────────────────────────────
+  const simulationSlot = (
+    <div style={{ display: 'flex', gap: space[6], alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      {/* Left: canvas + controls */}
+      <div>
+        <div style={sectionLabel}>Simulation</div>
+        <ControlBar world={world} recorder={recorder} interaction={interaction} />
+        <WorldCanvas world={world} recorder={recorder} interaction={interaction} scale={scale} />
+        <GravitySlider value={gravity} onChange={handleGravity} scale={scale} />
+        <p style={{ marginTop: space[2], fontSize: font.size.xs, color: color.text.muted }}>
+          Press ▶ Play to start · Drag ball to reposition · Adjust gravity live
         </p>
       </div>
 
-      {/* ── Scale selector (global, affects all display components) ────── */}
-      <div style={{ marginBottom: 16 }}>
-        <ScaleControl scale={scale} onChange={handleScaleChange} />
-      </div>
-
-      {/* ── Main layout ────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-
-        {/* Left: simulation + gravity */}
-        <div>
-          <div style={{ marginBottom: 6, fontSize: 12, color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
-            Simulation
-          </div>
-          <ControlBar world={world} recorder={recorder} interaction={interaction} />
-          <WorldCanvas world={world} recorder={recorder} interaction={interaction} scale={scale} />
-
-          {/* KAN-45: gravity slider — scale-aware */}
-          <GravitySlider value={gravity} onChange={handleGravity} scale={scale} />
-
-          <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-            Press ▶ Play to start · Drag ball to reposition · Adjust gravity live
-          </div>
+      {/* Right: graph + table moved to Analysis tab; keep a mini-preview here */}
+      <div>
+        <div style={sectionLabel}>Live Preview</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: space[2] }}>
+          <AxisSelector xKey={xKey} yKey={yKey} onXChange={setXKey} onYChange={setYKey} scale={scale} />
+          <CsvExportButton recorder={recorder} scale={scale} />
         </div>
-
-        {/* Right: graph + table */}
-        <div>
-          <div style={{ marginBottom: 6, fontSize: 12, color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
-            Data Graph
-          </div>
-
-          {/* Axis selectors + CSV export */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <AxisSelector xKey={xKey} yKey={yKey} onXChange={setXKey} onYChange={setYKey} scale={scale} />
-            {/* KAN-44: CSV export */}
-            <CsvExportButton recorder={recorder} scale={scale} />
-          </div>
-
-          {/* KAN-41 indicator lives inside ControlBar; graph has ↑↓ arrows + ⤢ pop-out */}
-          <GraphCanvas recorder={recorder} xKey={xKey} yKey={yKey} flipY={flipY} onFlipY={setFlipY} scale={scale} />
-
-          <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-            Updates live · ↑↓ flip Y direction · ⤢ pop-out for a dedicated graph window · ⬇ CSV
-          </div>
-
-          {/* KAN-43: data table (collapsible) */}
-          <DataTable recorder={recorder} scale={scale} />
-        </div>
+        <GraphCanvas recorder={recorder} xKey={xKey} yKey={yKey} flipY={flipY} onFlipY={setFlipY} scale={scale} />
+        <p style={{ marginTop: space[2], fontSize: font.size.xs, color: color.text.muted }}>
+          Updates live · ↑↓ flip Y · ⤢ pop-out · ⬇ CSV
+        </p>
       </div>
-
-      {/* Day 9 Spring Demo */}
-      <Day9Panel />
-      {/* Day 9 Forces Demo — all three IForce types */}
-      <ForcesDemoPanel />
-      {/* Day 10 — Collisions + Rotation + Constraints */}
-      <Day10Panel />
     </div>
+  )
+
+  // ── Slot: Spring Lab ─────────────────────────────────────────────────────
+  const springSlot = (
+    <div>
+      <Day9Panel />
+      <div style={{ marginTop: space[6] }}>
+        <ForcesDemoPanel />
+      </div>
+    </div>
+  )
+
+  // ── Slot: Physics Lab ────────────────────────────────────────────────────
+  const physicsSlot = <Day10Panel />
+
+  // ── Slot: Analysis ───────────────────────────────────────────────────────
+  const analysisSlot = (
+    <div>
+      <div style={sectionLabel}>Data Analysis</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: space[3] }}>
+        <AxisSelector xKey={xKey} yKey={yKey} onXChange={setXKey} onYChange={setYKey} scale={scale} />
+        <CsvExportButton recorder={recorder} scale={scale} />
+      </div>
+      <GraphCanvas recorder={recorder} xKey={xKey} yKey={yKey} flipY={flipY} onFlipY={setFlipY} scale={scale} />
+      <p style={{ marginTop: space[2], fontSize: font.size.xs, color: color.text.muted }}>
+        Updates live · ↑↓ flip Y direction · ⤢ pop-out for a dedicated graph window · ⬇ CSV
+      </p>
+      <div style={{ marginTop: space[4] }}>
+        <DataTable recorder={recorder} scale={scale} />
+      </div>
+    </div>
+  )
+
+  // ── AppShell wires everything together ────────────────────────────────────
+  return (
+    <AppShell
+      simulationSlot={simulationSlot}
+      springSlot={springSlot}
+      physicsSlot={physicsSlot}
+      analysisSlot={analysisSlot}
+      headerControls={
+        <ScaleControl scale={scale} onChange={handleScaleChange} />
+      }
+    />
   )
 }
