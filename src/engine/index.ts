@@ -1,5 +1,7 @@
 export { Body }             from './Body'
 export type { BodyState }   from './Body'
+export { BodyFactory }      from './BodyFactory'
+export type { BodySpec }    from './BodyFactory'
 export { World }            from './World'
 export { InteractionLayer } from './InteractionLayer'
 // Day 9

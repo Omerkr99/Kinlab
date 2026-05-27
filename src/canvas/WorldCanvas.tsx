@@ -14,6 +14,16 @@ import { FLOOR_Y, CANVAS_W, CANVAS_H, BALL_RADIUS } from '../constants'
 import { PhysicsScale, DEFAULT_SCALE } from '../units/PhysicsScale'
 import type { PhysicsEventBus } from '../engine/PhysicsEvents'
 
+// Per-body color palette — light/dark gradient stops for each body (KAN-97)
+const BODY_PALETTE: Array<[string, string]> = [
+  ['#74b3f0', '#2574c4'],  // blue  (body 0)
+  ['#86efac', '#16A34A'],  // green (body 1)
+  ['#fca5a5', '#DC2626'],  // red   (body 2)
+  ['#d8b4fe', '#7C3AED'],  // purple(body 3)
+  ['#fde68a', '#D97706'],  // amber (body 4)
+]
+const VEL_ARROW_COLORS = ['#E24A4A', '#DC2626', '#E24A4A', '#7C3AED', '#D97706']
+
 interface Props {
   world:          World
   recorder:       DataRecorder
@@ -119,10 +129,11 @@ function drawWorld(
   for (let bi = 0; bi < world.bodies.length; bi++) {
     const b = world.bodies[bi]
 
-    // Shadow
+    // Shadow — use actual body radius (KAN-97)
+    const bRadius = b.radius ?? BALL_RADIUS
     ctx.fillStyle = 'rgba(0,0,0,0.08)'
     ctx.beginPath()
-    ctx.ellipse(b.x, FLOOR_Y, BALL_RADIUS * 0.8, 6, 0, 0, Math.PI * 2)
+    ctx.ellipse(b.x, FLOOR_Y, bRadius * 0.8, 6, 0, 0, Math.PI * 2)
     ctx.fill()
 
     // ── Collision flash ring (KAN-95) ────────────────────────────────────────
@@ -130,9 +141,9 @@ function drawWorld(
     if (flashStart !== undefined) {
       const elapsed = now - flashStart
       if (elapsed < FLASH_DURATION) {
-        const t     = elapsed / FLASH_DURATION        // 0 → 1
-        const alpha = (1 - t) * 0.85                  // fade out
-        const radius = BALL_RADIUS + 4 + t * 12       // expand outward
+        const t     = elapsed / FLASH_DURATION                        // 0 → 1
+        const alpha = (1 - t) * 0.85                                  // fade out
+        const radius = (b.radius ?? BALL_RADIUS) + 4 + t * 12        // expand outward
 
         ctx.save()
         ctx.globalAlpha = alpha
@@ -150,19 +161,33 @@ function drawWorld(
       }
     }
 
-    // Ball
-    const gradient = ctx.createRadialGradient(b.x - 6, b.y - 6, 2, b.x, b.y, BALL_RADIUS)
-    gradient.addColorStop(0, '#74b3f0')
-    gradient.addColorStop(1, '#2574c4')
+    // Ball — per-body color palette (KAN-97)
+    const [light, dark] = BODY_PALETTE[bi % BODY_PALETTE.length]
+    const r = b.radius ?? BALL_RADIUS
+    const gradient = ctx.createRadialGradient(b.x - 6, b.y - 6, 2, b.x, b.y, r)
+    gradient.addColorStop(0, light)
+    gradient.addColorStop(1, dark)
     ctx.fillStyle = gradient
     ctx.beginPath()
-    ctx.arc(b.x, b.y, BALL_RADIUS, 0, Math.PI * 2)
+    ctx.arc(b.x, b.y, r, 0, Math.PI * 2)
     ctx.fill()
 
-    // Velocity vector (FR-21)
+    // Body index label (when multiple bodies) (KAN-97)
+    if (world.bodies.length > 1) {
+      ctx.fillStyle = 'rgba(255,255,255,0.9)'
+      ctx.font = `bold ${r < 16 ? 9 : 10}px sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(String(bi + 1), b.x, b.y + 1)
+      ctx.textBaseline = 'alphabetic'  // reset
+      ctx.textAlign = 'left'
+    }
+
+    // Velocity vector (FR-21) — per-body arrow color
+    const arrowColor = VEL_ARROW_COLORS[bi % VEL_ARROW_COLORS.length]
     const vLen = Math.hypot(b.vx, b.vy)
     if (vLen > 0.1) {
-      ctx.strokeStyle = '#E24A4A'
+      ctx.strokeStyle = arrowColor
       ctx.lineWidth = 2
       ctx.beginPath()
       ctx.moveTo(b.x, b.y)
@@ -172,7 +197,7 @@ function drawWorld(
       const angle = Math.atan2(b.vy, b.vx)
       const tipX = b.x + b.vx * VEL_SCALE
       const tipY = b.y + b.vy * VEL_SCALE
-      ctx.fillStyle = '#E24A4A'
+      ctx.fillStyle = arrowColor
       ctx.beginPath()
       ctx.moveTo(tipX, tipY)
       ctx.lineTo(tipX - 8 * Math.cos(angle - 0.4), tipY - 8 * Math.sin(angle - 0.4))

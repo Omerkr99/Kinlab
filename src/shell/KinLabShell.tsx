@@ -30,6 +30,7 @@ import { Day9Panel }               from '../components/Day9Panel'
 import { ForcesDemoPanel }         from '../components/ForcesDemoPanel'
 import { Day10Panel }              from '../components/Day10Panel'
 import type { World, InteractionLayer } from '../engine'
+import { BodyFactory } from '../engine'
 import type { PhysicsEventBus } from '../engine/PhysicsEvents'
 import type { DataRecorder, SeriesKey } from '../recorder'
 import type { PhysicsScale } from '../units/PhysicsScale'
@@ -431,7 +432,14 @@ export function KinLabShell({
             onToolChange={setActiveTool}
             environment={environment}
             onEnvChange={setEnvironment}
-            onObjectTypeAdd={type => console.log('add object:', type)}
+            onObjectTypeAdd={_type => {
+              const idx = world.bodies.length
+              const b = BodyFactory.circle({}, idx)
+              world.addBody(b)
+              world.collisionDetection = world.bodies.length > 1
+              setSelectedBody(idx)
+              toast.success(`Body ${idx + 1} added`, { duration: 2000 })
+            }}
             onCustomObjectCreate={() => console.log('custom object')}
             collapsed={sidebarCollapsed}
             onCollapsedChange={handleSidebarToggle}
