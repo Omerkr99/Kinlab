@@ -29,6 +29,8 @@ import { ScaleControl }            from '../components/ScaleControl'
 import { Day9Panel }               from '../components/Day9Panel'
 import { ForcesDemoPanel }         from '../components/ForcesDemoPanel'
 import { Day10Panel }              from '../components/Day10Panel'
+import { HelpModal }               from '../components/HelpModal'
+import { saveWorld, loadWorld, hasSave, exportCSV } from '../persistence/persistence'
 import type { World, InteractionLayer } from '../engine'
 import { BodyFactory } from '../engine'
 import type { PhysicsEventBus } from '../engine/PhysicsEvents'
@@ -317,6 +319,7 @@ export function KinLabShell({
   const [sidebarCollapsed,    setSidebarCollapsed]    = useState(false)
   // Track whether the user manually toggled the sidebar (overrides auto-collapse)
   const [sidebarUserLocked,   setSidebarUserLocked]   = useState(false)
+  const [showHelp,            setShowHelp]            = useState(false)  // KAN-112
   const shellRef = useRef<HTMLDivElement>(null)
 
   // KAN-96: Auto-collapse sidebar below 1200px using ResizeObserver
@@ -381,6 +384,50 @@ export function KinLabShell({
     setSelectedBody(null)
   }, [world])
 
+  // ── KAN-112: Save / Load / Export / Help ────────────────────────────────────
+
+  const handleNavAction = useCallback((action: 'save' | 'load' | 'export' | 'help') => {
+    switch (action) {
+      case 'save': {
+        saveWorld(world)
+        toast.success('State saved to browser storage', { duration: 2000 })
+        break
+      }
+      case 'load': {
+        if (!hasSave()) {
+          toast.error('No saved state found', { duration: 2000 })
+          break
+        }
+        const state = loadWorld(world)
+        if (!state) {
+          toast.error('Failed to load saved state', { duration: 2000 })
+          break
+        }
+        // Sync React state that mirrors world properties
+        onGravityChange(state.gravity)
+        setEnvironment({
+          floor:       state.floorEnabled,
+          walls:       state.wallsEnabled,
+          friction:    1 - state.floorFriction,     // engine→UI inversion
+          restitution: state.floorRestitution,
+        })
+        setSelectedBody(null)
+        toast.success(`Loaded ${state.bodies.length} bod${state.bodies.length === 1 ? 'y' : 'ies'}`, { duration: 2000 })
+        break
+      }
+      case 'export': {
+        const ok = exportCSV(recorder)
+        if (ok) toast.success('Data exported as CSV', { duration: 2000 })
+        else    toast.error('No recorded data to export — press ▶ Play first', { duration: 3000 })
+        break
+      }
+      case 'help': {
+        setShowHelp(true)
+        break
+      }
+    }
+  }, [world, recorder, onGravityChange, toast])
+
   const showRightPanel = selectedBody !== null
 
   // ── CSS Grid layout values ─────────────────────────────────────────────────
@@ -410,7 +457,10 @@ export function KinLabShell({
         <a href="#kl-main" className="kl-skip-link">Skip to main content</a>
 
         {/* ── NavBar ──────────────────────────────────────────────────── */}
-        <NavBar activeTab={activeNavTab} onChange={setActiveNavTab} />
+        <NavBar activeTab={activeNavTab} onChange={setActiveNavTab} onAction={handleNavAction} />
+
+        {/* KAN-112: Help modal (portal, sits above everything) */}
+        {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
 
         {/* ── SimControlBar ─────────────────────────────────────────── */}
         <SimControlBar
