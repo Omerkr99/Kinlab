@@ -17,7 +17,7 @@
  *   - onCustomObjectCreate() callback
  *   - pluginSlot: ReactNode for extra tools
  */
-import { useState, CSSProperties } from 'react'
+import { useState } from 'react'
 import { Toggle } from '../components/ui/Toggle'
 import { type SidebarTab, type ActiveTool, type EnvironmentSettings, OBJECT_TYPES } from './shellTypes'
 

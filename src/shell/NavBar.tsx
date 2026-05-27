@@ -10,7 +10,7 @@
  *  - Tabs: role="tab" + aria-selected
  *  - Right actions: aria-label on each button
  */
-import { useState, CSSProperties } from 'react'
+import { useState } from 'react'
 import { NAV_TABS, type ActiveNavTab } from './shellTypes'
 
 interface NavBarProps {

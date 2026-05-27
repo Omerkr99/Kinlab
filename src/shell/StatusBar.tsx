@@ -5,7 +5,6 @@
  * Center: Zoom: 100%  [−] [slider] [+]
  * Right:  Simulation Speed: 1.0x  [slider]
  */
-import { CSSProperties } from 'react'
 import type { CursorPos } from './shellTypes'
 import type { PhysicsScale } from '../units/PhysicsScale'
 import { FLOOR_Y } from '../constants'

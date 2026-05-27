@@ -46,7 +46,7 @@ export function GravitySlider({ value, onChange, scale = DEFAULT_SCALE }: Props)
 
   // Slider tick labels: show a few meaningful values in display units
   const moonDisplay    = presetDisplay(1.6)
-  const jupiterDisplay = presetDisplay(24.8)
+  void presetDisplay(24.8)  // jupiter preset — reserved for future tick label
 
   return (
     <div style={{

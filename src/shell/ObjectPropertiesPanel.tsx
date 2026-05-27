@@ -23,7 +23,7 @@
  *  - playState: 'idle' | 'running' | 'paused'
  *  - fps: measured FPS
  */
-import { useState, useCallback, CSSProperties } from 'react'
+import { useState, useCallback } from 'react'
 import type { World } from '../engine'
 import type { DataRecorder } from '../recorder'
 import type { PlayState } from './shellTypes'
@@ -173,7 +173,7 @@ const OBJECT_COLORS: Record<number, string> = {
 }
 
 export function ObjectPropertiesPanel({
-  bodyIndex, world, recorder, playState, onClose, onDelete, onPlayStateChange, interaction,
+  bodyIndex, world, recorder, playState, onClose, onDelete,
 }: ObjectPropertiesPanelProps) {
   // Poll the selected body's live state
   const getBodySnap = useCallback(() => {

@@ -8,7 +8,8 @@
  *  - DataMonitor: role="table" with scope headers, aria-live="polite" on tbody
  *  - GraphPanel: axis selectors have <label> linkage
  */
-import { useState, useCallback, CSSProperties } from 'react'
+import { useCallback } from 'react'
+import React from 'react'
 import { GraphCanvas } from '../canvas/GraphCanvas'
 import { AxisSelector } from '../components/AxisSelector'
 import { CsvExportButton } from '../components/CsvExportButton'
@@ -26,7 +27,7 @@ interface DataMonitorProps {
   scale:    PhysicsScale
 }
 
-const BODY_COLORS = ['#2563EB', '#16A34A', '#DC2626', '#7C3AED', '#EAB308']
+export const BODY_COLORS = ['#2563EB', '#16A34A', '#DC2626', '#7C3AED', '#EAB308']
 const BODY_ICONS  = ['🔵', '🟩', '🔴', '🟣', '🟡']
 
 const TH = ({ children }: { children: React.ReactNode }) => (
@@ -63,7 +64,7 @@ const TD = ({ children, mono = false, left = false }: {
   </td>
 )
 
-function DataMonitor({ world, recorder, scale }: DataMonitorProps) {
+function DataMonitor({ world, recorder: _recorder, scale }: DataMonitorProps) {
   const getBodies = useCallback(() =>
     world.bodies.map((b, i) => ({
       i,

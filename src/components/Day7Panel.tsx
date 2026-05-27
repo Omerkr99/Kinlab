@@ -14,7 +14,7 @@ import { DataRecorder }  from '../recorder'
 import type { SeriesKey } from '../recorder'
 import { GraphEngine }   from '../graph/GraphEngine'
 import { FpsMeter }      from '../utils/fps'
-import { roundTo }       from '../utils/math'
+// roundTo was imported for potential display helpers — not yet used
 import {
   DEFAULT_SCALE, SCALE_PRESETS, axisLabel,
 } from '../units/PhysicsScale'
@@ -374,7 +374,7 @@ export function Day7Panel() {
           <div style={{ display: 'flex', gap: 5, marginBottom: 8, flexWrap: 'wrap' }}>
             {AXIS_OPTS.map((opt, i) => (
               <button key={i} onClick={() => setAxisIdx(i)} style={{
-                padding: '4px 9px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 10,
+                padding: '4px 9px', borderRadius: 6, cursor: 'pointer', fontSize: 10,
                 fontWeight: 700,
                 background: axisIdx === i ? '#3b82f6' : '#0f172a',
                 color:      axisIdx === i ? '#fff'    : '#475569',
@@ -395,7 +395,7 @@ export function Day7Panel() {
             <span style={{ fontSize: 10, color: '#475569', fontWeight: 700 }}>Scale:</span>
             {SCALE_OPTS.map((opt, i) => (
               <button key={i} onClick={() => setScaleIdx(i)} style={{
-                padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11,
+                padding: '4px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 11,
                 fontWeight: 700,
                 background: scaleIdx === i ? '#a78bfa' : '#0f172a',
                 color:      scaleIdx === i ? '#fff'    : '#475569',
@@ -403,7 +403,7 @@ export function Day7Panel() {
               }}>{opt.label}</button>
             ))}
             <button onClick={() => setFlipY(f => !f)} style={{
-              padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11,
+              padding: '4px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 11,
               fontWeight: 700, marginLeft: 8,
               background: flipY ? '#f59e0b' : '#0f172a',
               color:      flipY ? '#fff'    : '#475569',

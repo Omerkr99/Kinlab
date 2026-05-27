@@ -20,7 +20,7 @@ import {
   kineticEnergy, springPotentialEnergy as springPE,
   momentum, speed, roundTo,
 } from '../utils/math'
-import { FLOOR_Y, CANVAS_W, BALL_RADIUS, WALL_L, WALL_R } from '../constants'
+import { FLOOR_Y, CANVAS_W, BALL_RADIUS } from '../constants'
 
 // ── Canvas layout ─────────────────────────────────────────────────────────────
 const SCALE = 0.5

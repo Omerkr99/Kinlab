@@ -258,6 +258,8 @@ export function KinLabShell({
   const [simSpeed,      setSimSpeed]      = useState(1)
   const [cursorPos,     setCursorPos]     = useState<CursorPos | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  // setSidebarCollapsed is wired in KAN-96 (responsive auto-collapse)
+  void setSidebarCollapsed
   const [environment,   setEnvironment]   = useState<EnvironmentSettings>({
     floor:       true,
     walls:       true,
