@@ -24,6 +24,7 @@ import type { DataRecorder, SeriesKey } from '../recorder'
 import type { PhysicsScale } from '../units/PhysicsScale'
 import type { World } from '../engine'
 import { usePoll } from './hooks'
+import { useTheme } from '../context/ThemeContext'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -60,39 +61,43 @@ interface RecorderRow {
 
 // ── Shared table cell primitives ──────────────────────────────────────────────
 
-const TH = ({ children, left }: { children: React.ReactNode; left?: boolean }) => (
-  <th scope="col" style={{
-    padding:      '6px 8px',
-    fontSize:     11,
-    fontWeight:   600,
-    color:        '#6B7280',
-    background:   '#F9FAFB',
-    borderBottom: '1px solid #E5E7EB',
-    textAlign:    left ? 'left' : 'right',
-    whiteSpace:   'nowrap',
-    position:     'sticky',
-    top:          0,
-    zIndex:       1,
-  }}>
-    {children}
-  </th>
-)
+function TH({ children, left, isDark }: { children: React.ReactNode; left?: boolean; isDark: boolean }) {
+  return (
+    <th scope="col" style={{
+      padding:      '6px 8px',
+      fontSize:     11,
+      fontWeight:   600,
+      color:        isDark ? '#9CA3AF' : '#6B7280',
+      background:   isDark ? '#1F2937' : '#F9FAFB',
+      borderBottom: `1px solid ${isDark ? '#374151' : '#E5E7EB'}`,
+      textAlign:    left ? 'left' : 'right',
+      whiteSpace:   'nowrap',
+      position:     'sticky',
+      top:          0,
+      zIndex:       1,
+    }}>
+      {children}
+    </th>
+  )
+}
 
-const TD = ({ children, mono = false, left = false }: {
-  children: React.ReactNode; mono?: boolean; left?: boolean
-}) => (
-  <td style={{
-    padding:      '4px 8px',
-    fontSize:     11,
-    color:        '#111827',
-    textAlign:    left ? 'left' : 'right',
-    fontFamily:   mono ? '"JetBrains Mono","Fira Code",monospace' : 'inherit',
-    whiteSpace:   'nowrap',
-    borderBottom: '1px solid #F3F4F6',
-  }}>
-    {children}
-  </td>
-)
+function TD({ children, mono = false, left = false, isDark }: {
+  children: React.ReactNode; mono?: boolean; left?: boolean; isDark: boolean
+}) {
+  return (
+    <td style={{
+      padding:      '4px 8px',
+      fontSize:     11,
+      color:        isDark ? '#D1D5DB' : '#111827',
+      textAlign:    left ? 'left' : 'right',
+      fontFamily:   mono ? '"JetBrains Mono","Fira Code",monospace' : 'inherit',
+      whiteSpace:   'nowrap',
+      borderBottom: `1px solid ${isDark ? '#1F2937' : '#F3F4F6'}`,
+    }}>
+      {children}
+    </td>
+  )
+}
 
 // ── Column filter popover (KAN-89) ────────────────────────────────────────────
 
@@ -105,6 +110,7 @@ interface ColFilterProps {
 function ColFilterPopover({ visible, onChange, extraColumns = [] }: ColFilterProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const { isDark } = useTheme()
 
   // Close on outside click
   useEffect(() => {
@@ -127,6 +133,10 @@ function ColFilterPopover({ visible, onChange, extraColumns = [] }: ColFilterPro
     ...extraColumns.map(ec => ({ key: ec.key, label: ec.header })),
   ]
 
+  const border = isDark ? '#374151' : '#E5E7EB'
+  const bg     = isDark ? '#1F2937' : '#FFFFFF'
+  const text   = isDark ? '#D1D5DB' : '#374151'
+
   return (
     <div ref={ref} style={{ position: 'relative' }}>
       <button
@@ -136,9 +146,9 @@ function ColFilterPopover({ visible, onChange, extraColumns = [] }: ColFilterPro
         onClick={() => setOpen(o => !o)}
         style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          width: 28, height: 28, border: '1px solid #E5E7EB',
-          borderRadius: 4, background: open ? '#EFF6FF' : '#FFFFFF',
-          color: open ? '#2563EB' : '#6B7280', cursor: 'pointer',
+          width: 28, height: 28, border: `1px solid ${border}`,
+          borderRadius: 4, background: open ? (isDark ? '#1E3A5F' : '#EFF6FF') : bg,
+          color: open ? '#2563EB' : (isDark ? '#9CA3AF' : '#6B7280'), cursor: 'pointer',
           fontSize: 13, transition: 'all 0.12s',
         }}
       >
@@ -149,10 +159,10 @@ function ColFilterPopover({ visible, onChange, extraColumns = [] }: ColFilterPro
         <div style={{
           position:   'absolute', top: '100%', right: 0, marginTop: 4,
           zIndex:     100,
-          background: '#FFFFFF',
-          border:     '1px solid #E5E7EB',
+          background: bg,
+          border:     `1px solid ${border}`,
           borderRadius: 6,
-          boxShadow:  '0 4px 16px rgba(0,0,0,0.10)',
+          boxShadow:  '0 4px 16px rgba(0,0,0,0.20)',
           padding:    '8px 0',
           minWidth:   120,
         }}>
@@ -168,11 +178,11 @@ function ColFilterPopover({ visible, onChange, extraColumns = [] }: ColFilterPro
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
                   padding: '4px 10px', cursor: 'pointer',
-                  fontSize: 12, color: '#374151',
+                  fontSize: 12, color: text,
                   background: 'transparent',
                   userSelect: 'none',
                 }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#F9FAFB')}
+                onMouseEnter={e => (e.currentTarget.style.background = isDark ? '#374151' : '#F9FAFB')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
                 <input
@@ -194,15 +204,18 @@ function ColFilterPopover({ visible, onChange, extraColumns = [] }: ColFilterPro
 
 // ── DataMonitor ───────────────────────────────────────────────────────────────
 
-interface DataMonitorProps {
+export interface DataMonitorProps {
   world:        World
   recorder:     DataRecorder
   scale:        PhysicsScale
   /** Extra metric columns for plugin integrations (KAN-91) */
   extraColumns?: ExtraColumn[]
+  /** Override the root container's flex value (default '0 0 55%') */
+  style?:        React.CSSProperties
 }
 
-function DataMonitor({ world, recorder, scale, extraColumns = [] }: DataMonitorProps) {
+export function DataMonitor({ world, recorder, scale, extraColumns = [], style }: DataMonitorProps) {
+  const { isDark } = useTheme()
   const u = scale.unitSymbol
   const ppu = scale.pixelsPerUnit
 
@@ -276,13 +289,19 @@ function DataMonitor({ world, recorder, scale, extraColumns = [] }: DataMonitorP
   // Count visible columns for colSpan
   const visibleColCount = BASE_COLS.filter(c => visibleCols.has(c)).length + extraColumns.length
 
+  const dmBorder = isDark ? '#374151' : '#E5E7EB'
+  const dmBg     = isDark ? '#0F172A'  : '#FFFFFF'
+  const dmText   = isDark ? '#F9FAFB'  : '#111827'
+
   return (
     <div style={{
       display:       'flex',
       flexDirection: 'column',
       flex:          '0 0 55%',
-      borderRight:   '1px solid #E5E7EB',
+      borderRight:   `1px solid ${dmBorder}`,
       overflow:      'hidden',
+      background:    dmBg,
+      ...style,
     }}>
       {/* Header */}
       <div style={{
@@ -290,18 +309,20 @@ function DataMonitor({ world, recorder, scale, extraColumns = [] }: DataMonitorP
         alignItems:     'center',
         justifyContent: 'space-between',
         padding:        '6px 10px',
-        borderBottom:   '1px solid #E5E7EB',
+        borderBottom:   `1px solid ${dmBorder}`,
         flexShrink:     0,
         gap:            8,
+        background:     dmBg,
       }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: dmText }}>
           Data Monitor
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {isTruncated && (
             <span style={{
-              fontSize: 10, color: '#6B7280', background: '#F3F4F6',
-              border: '1px solid #E5E7EB', borderRadius: 3, padding: '1px 5px',
+              fontSize: 10, color: '#6B7280',
+              background: isDark ? '#1F2937' : '#F3F4F6',
+              border: `1px solid ${dmBorder}`, borderRadius: 3, padding: '1px 5px',
             }}>
               last {MAX_ROWS} of {total}
             </span>
@@ -331,7 +352,7 @@ function DataMonitor({ world, recorder, scale, extraColumns = [] }: DataMonitorP
       <div
         ref={containerRef}
         onScroll={e => setScrollTop((e.target as HTMLDivElement).scrollTop)}
-        style={{ flex: 1, overflowY: 'auto', overflowX: 'auto' }}
+        style={{ flex: 1, overflowY: 'auto', overflowX: 'auto', background: dmBg }}
       >
         <table
           role="table"
@@ -350,14 +371,14 @@ function DataMonitor({ world, recorder, scale, extraColumns = [] }: DataMonitorP
           </colgroup>
           <thead>
             <tr>
-              {visibleCols.has('t')  && <TH>t (s)</TH>}
-              {visibleCols.has('x')  && <TH>x ({u})</TH>}
-              {visibleCols.has('y')  && <TH>y ({u})</TH>}
-              {visibleCols.has('vx') && <TH>vx ({u}/s)</TH>}
-              {visibleCols.has('vy') && <TH>vy ({u}/s)</TH>}
-              {visibleCols.has('ax') && <TH>ax</TH>}
-              {visibleCols.has('ay') && <TH>ay</TH>}
-              {extraColumns.map(ec  => <TH key={ec.key}>{ec.header}</TH>)}
+              {visibleCols.has('t')  && <TH isDark={isDark}>t (s)</TH>}
+              {visibleCols.has('x')  && <TH isDark={isDark}>x ({u})</TH>}
+              {visibleCols.has('y')  && <TH isDark={isDark}>y ({u})</TH>}
+              {visibleCols.has('vx') && <TH isDark={isDark}>vx ({u}/s)</TH>}
+              {visibleCols.has('vy') && <TH isDark={isDark}>vy ({u}/s)</TH>}
+              {visibleCols.has('ax') && <TH isDark={isDark}>ax</TH>}
+              {visibleCols.has('ay') && <TH isDark={isDark}>ay</TH>}
+              {extraColumns.map(ec  => <TH key={ec.key} isDark={isDark}>{ec.header}</TH>)}
             </tr>
           </thead>
           <tbody aria-live="polite" aria-atomic="false">
@@ -371,16 +392,16 @@ function DataMonitor({ world, recorder, scale, extraColumns = [] }: DataMonitorP
             {windowRows.map((r, wi) => {
               const i = startRow + wi
               return (
-                <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
-                  {visibleCols.has('t')  && <TD mono>{r.t.toFixed(3)}</TD>}
-                  {visibleCols.has('x')  && <TD mono>{r.x.toFixed(2)}</TD>}
-                  {visibleCols.has('y')  && <TD mono>{r.y.toFixed(2)}</TD>}
-                  {visibleCols.has('vx') && <TD mono>{r.vx.toFixed(2)}</TD>}
-                  {visibleCols.has('vy') && <TD mono>{r.vy.toFixed(2)}</TD>}
-                  {visibleCols.has('ax') && <TD mono>{r.ax.toFixed(2)}</TD>}
-                  {visibleCols.has('ay') && <TD mono>{r.ay.toFixed(2)}</TD>}
+                <tr key={i} style={{ background: i % 2 === 0 ? dmBg : (isDark ? '#111827' : '#FAFAFA') }}>
+                  {visibleCols.has('t')  && <TD isDark={isDark} mono>{r.t.toFixed(3)}</TD>}
+                  {visibleCols.has('x')  && <TD isDark={isDark} mono>{r.x.toFixed(2)}</TD>}
+                  {visibleCols.has('y')  && <TD isDark={isDark} mono>{r.y.toFixed(2)}</TD>}
+                  {visibleCols.has('vx') && <TD isDark={isDark} mono>{r.vx.toFixed(2)}</TD>}
+                  {visibleCols.has('vy') && <TD isDark={isDark} mono>{r.vy.toFixed(2)}</TD>}
+                  {visibleCols.has('ax') && <TD isDark={isDark} mono>{r.ax.toFixed(2)}</TD>}
+                  {visibleCols.has('ay') && <TD isDark={isDark} mono>{r.ay.toFixed(2)}</TD>}
                   {extraColumns.map(ec  => (
-                    <TD key={ec.key} mono>{String(ec.getValue(r, i))}</TD>
+                    <TD key={ec.key} isDark={isDark} mono>{String(ec.getValue(r, i))}</TD>
                   ))}
                 </tr>
               )
@@ -412,7 +433,7 @@ function DataMonitor({ world, recorder, scale, extraColumns = [] }: DataMonitorP
 
 // ── GraphPanel ────────────────────────────────────────────────────────────────
 
-interface GraphPanelProps {
+export interface GraphPanelProps {
   recorder: DataRecorder
   scale:    PhysicsScale
   xKey:     SeriesKey
@@ -421,17 +442,27 @@ interface GraphPanelProps {
   onXKeyChange: (k: SeriesKey) => void
   onYKeyChange: (k: SeriesKey) => void
   onFlipY:      (v: boolean) => void
+  /** Override the root container's flex value (default '0 0 45%') */
+  style?:   React.CSSProperties
 }
 
-function GraphPanel({
-  recorder, scale, xKey, yKey, flipY, onXKeyChange, onYKeyChange, onFlipY,
+export function GraphPanel({
+  recorder, scale, xKey, yKey, flipY, onXKeyChange, onYKeyChange, onFlipY, style,
 }: GraphPanelProps) {
+  const { isDark } = useTheme()
+  const gpBorder = isDark ? '#374151' : '#E5E7EB'
+  const gpBg     = isDark ? '#0F172A' : '#FFFFFF'
+  const gpText   = isDark ? '#F9FAFB' : '#111827'
+  const gpArea   = isDark ? '#111827' : '#FAFAFA'
+
   return (
     <div style={{
       display:       'flex',
       flexDirection: 'column',
       flex:          '0 0 45%',
       overflow:      'hidden',
+      background:    gpBg,
+      ...style,
     }}>
       {/* Header */}
       <div style={{
@@ -439,12 +470,13 @@ function GraphPanel({
         alignItems:     'center',
         justifyContent: 'space-between',
         padding:        '8px 12px',
-        borderBottom:   '1px solid #E5E7EB',
+        borderBottom:   `1px solid ${gpBorder}`,
+        background:     gpBg,
         flexShrink:     0,
         flexWrap:       'wrap',
         gap:            6,
       }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: gpText }}>
           Graph
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -465,7 +497,7 @@ function GraphPanel({
         alignItems:     'center',
         justifyContent: 'center',
         padding:        4,
-        background:     '#FAFAFA',
+        background:     gpArea,
       }}>
         <GraphCanvas
           recorder={recorder}
@@ -488,6 +520,7 @@ export function BottomPanels({
   xKey, yKey, flipY,
   onXKeyChange, onYKeyChange, onFlipY,
 }: BottomPanelsProps) {
+  const { isDark } = useTheme()
   return (
     <div style={{
       display:        'flex',
@@ -495,8 +528,8 @@ export function BottomPanels({
       height:         220,
       minHeight:      220,
       flexShrink:     0,
-      borderTop:      '1px solid #E5E7EB',
-      background:     '#FFFFFF',
+      borderTop:      `1px solid ${isDark ? '#374151' : '#E5E7EB'}`,
+      background:     isDark ? '#0F172A' : '#FFFFFF',
       overflow:       'hidden',
     }}>
       <DataMonitor world={world} recorder={recorder} scale={scale} extraColumns={extraColumns} />

@@ -21,15 +21,14 @@ import { SimControlBar }           from './SimControlBar'
 import { LeftSidebar }             from './LeftSidebar'
 import { CanvasArea }              from './CanvasArea'
 import { ObjectPropertiesPanel }   from './ObjectPropertiesPanel'
-import { BottomPanels }            from './BottomPanels'
+import { BottomPanels, DataMonitor, GraphPanel } from './BottomPanels'
 import { StatusBar }               from './StatusBar'
 import { WorldCanvas }             from '../canvas/WorldCanvas'
 import { GravitySlider }           from '../components/GravitySlider'
 import { ScaleControl }            from '../components/ScaleControl'
-import { Day9Panel }               from '../components/Day9Panel'
 import { ForcesDemoPanel }         from '../components/ForcesDemoPanel'
-import { Day10Panel }              from '../components/Day10Panel'
 import { HelpModal }               from '../components/HelpModal'
+import { Toggle }                  from '../components/ui/Toggle'
 import { saveWorld, loadWorld, hasSave, exportCSV } from '../persistence/persistence'
 import type { World, InteractionLayer } from '../engine'
 import { BodyFactory } from '../engine'
@@ -37,7 +36,8 @@ import type { PhysicsEventBus } from '../engine/PhysicsEvents'
 import type { DataRecorder, SeriesKey } from '../recorder'
 import type { PhysicsScale } from '../units/PhysicsScale'
 import { useToast } from '../context/ToastContext'
-import { useResizeObserver } from './hooks'
+import { useTheme } from '../context/ThemeContext'
+import { useResizeObserver, usePoll } from './hooks'
 import type {
   PlayState, ActiveNavTab, SidebarTab, ActiveTool,
   EnvironmentSettings, CursorPos,
@@ -180,79 +180,378 @@ body {
 
 // ── Panel renderers for non-simulation tabs ───────────────────────────────────
 
-function OtherTabContent({ activeTab }: { activeTab: ActiveNavTab }) {
-  const panelStyle: CSSProperties = {
-    flex:    1,
-    padding: 24,
-    overflowY: 'auto',
-    background: '#F9FAFB',
+// ── Objects tab: live body list ───────────────────────────────────────────────
+
+interface ObjectsTabPanelProps {
+  world:         World
+  scale:         PhysicsScale
+  selectedBody:  number | null
+  onBodySelect:  (idx: number | null) => void
+  onBodyDelete:  (idx: number) => void
+  isDark:        boolean
+}
+
+function ObjectsTabPanel({ world, scale, selectedBody, onBodySelect, onBodyDelete, isDark }: ObjectsTabPanelProps) {
+  const PALETTE = ['#2563EB', '#16A34A', '#DC2626', '#7C3AED', '#EAB308']
+  const getSnapshot = useCallback(
+    () => world.bodies.map((b, i) => ({
+      idx: i, type: b.type ?? 'Circle', color: b.color,
+      x: b.x, y: b.y, vx: b.vx, vy: b.vy, mass: b.mass, radius: (b as { radius?: number }).radius ?? 20,
+    })),
+    [world],
+  )
+  const bodies = usePoll(getSnapshot, 100)
+  const u   = scale.unitSymbol
+  const ppu = scale.pixelsPerUnit
+
+  const textPrimary   = isDark ? '#F9FAFB' : '#111827'
+  const textSecondary = isDark ? '#9CA3AF' : '#6B7280'
+  const border        = isDark ? '#374151' : '#E5E7EB'
+  const cardBg        = isDark ? '#1F2937' : '#FFFFFF'
+  const selBg         = isDark ? '#1E3A5F' : '#EFF6FF'
+  const selBorder     = '#2563EB'
+  const btnBg         = isDark ? '#374151' : '#F9FAFB'
+  const btnText       = isDark ? '#D1D5DB' : '#374151'
+
+  if (bodies.length === 0) {
+    return (
+      <div style={{ padding: '48px 24px', textAlign: 'center', color: textSecondary }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>⬜</div>
+        <p style={{ fontSize: 14, fontWeight: 600, color: textPrimary, marginBottom: 4 }}>No objects yet</p>
+        <p style={{ fontSize: 13 }}>Switch to the Simulation tab and use "Add Object" to create bodies.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <p style={{ fontSize: 11, color: textSecondary, paddingBottom: 4 }}>
+        {bodies.length} {bodies.length === 1 ? 'object' : 'objects'} — live values update every 100 ms
+      </p>
+      {bodies.map(b => {
+        const isSelected = selectedBody === b.idx
+        const bodyColor  = b.color ?? PALETTE[b.idx % PALETTE.length]
+        const isRect     = b.type === 'Rectangle'
+        return (
+          <div
+            key={b.idx}
+            onClick={() => onBodySelect(b.idx)}
+            style={{
+              padding: '10px 14px',
+              borderRadius: 8,
+              border:   `1px solid ${isSelected ? selBorder : border}`,
+              background: isSelected ? selBg : cardBg,
+              cursor: 'pointer',
+              transition: 'all 0.12s',
+            }}
+          >
+            {/* Title row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <div style={{
+                width: 14, height: 14, flexShrink: 0,
+                borderRadius: isRect ? 2 : '50%',
+                background: bodyColor,
+              }} />
+              <span style={{ fontWeight: 700, fontSize: 13, color: textPrimary }}>
+                {b.type} {b.idx}
+              </span>
+              {isSelected && (
+                <span style={{
+                  fontSize: 9, background: '#2563EB', color: '#fff',
+                  borderRadius: 3, padding: '1px 6px', marginLeft: 'auto',
+                  fontWeight: 700, letterSpacing: 0.5,
+                }}>
+                  SELECTED
+                </span>
+              )}
+            </div>
+
+            {/* Live data grid */}
+            <div style={{
+              display: 'grid', gridTemplateColumns: '1fr 1fr',
+              gap: '2px 8px', fontSize: 11,
+              color: textSecondary,
+              fontFamily: '"JetBrains Mono","Fira Code",monospace',
+              marginBottom: 8,
+            }}>
+              <span>x: {(b.x / ppu).toFixed(1)} {u}</span>
+              <span>y: {(b.y / ppu).toFixed(1)} {u}</span>
+              <span>vx: {(b.vx / ppu).toFixed(1)} {u}/s</span>
+              <span>vy: {(b.vy / ppu).toFixed(1)} {u}/s</span>
+            </div>
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                onClick={e => { e.stopPropagation(); onBodySelect(b.idx) }}
+                style={{
+                  flex: 1, padding: '3px 8px', fontSize: 11, fontWeight: 600,
+                  border: `1px solid ${border}`, borderRadius: 4,
+                  background: btnBg, color: btnText, cursor: 'pointer',
+                }}
+              >
+                Select
+              </button>
+              <button
+                onClick={e => { e.stopPropagation(); onBodyDelete(b.idx) }}
+                style={{
+                  padding: '3px 8px', fontSize: 11, fontWeight: 600,
+                  border: '1px solid #FECACA', borderRadius: 4,
+                  background: isDark ? '#450A0A' : '#FEF2F2',
+                  color: '#DC2626', cursor: 'pointer',
+                }}
+              >
+                🗑 Delete
+              </button>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Settings tab ──────────────────────────────────────────────────────────────
+
+interface SettingsTabPanelProps {
+  scale:         PhysicsScale
+  onScaleChange: (s: PhysicsScale) => void
+  gravity:       number
+  onGravityChange:(v: number) => void
+  environment:   EnvironmentSettings
+  onEnvChange:   (e: EnvironmentSettings) => void
+  isDark:        boolean
+}
+
+function SettingsTabPanel({
+  scale, onScaleChange, gravity, onGravityChange, environment, onEnvChange, isDark,
+}: SettingsTabPanelProps) {
+  const { toggleTheme } = useTheme()
+
+  const textPrimary   = isDark ? '#F9FAFB' : '#111827'
+  const textSecondary = isDark ? '#9CA3AF' : '#6B7280'
+  const border        = isDark ? '#374151' : '#E5E7EB'
+  const surfaceBg     = isDark ? '#1F2937' : '#F9FAFB'
+
+  const sectionHdr: CSSProperties = {
+    fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+    letterSpacing: 0.8, color: textSecondary, marginBottom: 12,
+  }
+  const row: CSSProperties = {
+    display: 'flex', justifyContent: 'space-between',
+    alignItems: 'center', marginBottom: 6,
+    fontSize: 13, color: textPrimary,
+  }
+  const val: CSSProperties = {
+    fontFamily: '"JetBrains Mono","Fira Code",monospace',
+    fontSize: 12, color: '#2563EB',
+  }
+  const card: CSSProperties = {
+    background: surfaceBg,
+    border: `1px solid ${border}`,
+    borderRadius: 8, padding: '14px 16px',
+    marginBottom: 16,
+  }
+
+  return (
+    <div style={{ maxWidth: 520, display: 'flex', flexDirection: 'column' }}>
+
+      {/* ── Unit Scale ─────────────────────────────────────────────────────── */}
+      <section style={card}>
+        <h3 style={sectionHdr}>Unit Scale</h3>
+        <ScaleControl scale={scale} onChange={onScaleChange} />
+      </section>
+
+      {/* ── Gravity ────────────────────────────────────────────────────────── */}
+      <section style={card}>
+        <h3 style={sectionHdr}>Gravity</h3>
+        <GravitySlider value={gravity} onChange={onGravityChange} scale={scale} />
+      </section>
+
+      {/* ── Environment ────────────────────────────────────────────────────── */}
+      <section style={card}>
+        <h3 style={sectionHdr}>Environment</h3>
+
+        {/* Floor toggle */}
+        <div style={row}>
+          <label htmlFor="s-floor" style={{ fontSize: 13, color: textPrimary, cursor: 'pointer' }}>
+            Floor boundary
+          </label>
+          <Toggle
+            id="s-floor"
+            checked={environment.floor}
+            onChange={v => onEnvChange({ ...environment, floor: v })}
+            size="sm"
+          />
+        </div>
+
+        {/* Walls toggle */}
+        <div style={row}>
+          <label htmlFor="s-walls" style={{ fontSize: 13, color: textPrimary, cursor: 'pointer' }}>
+            Wall boundaries
+          </label>
+          <Toggle
+            id="s-walls"
+            checked={environment.walls}
+            onChange={v => onEnvChange({ ...environment, walls: v })}
+            size="sm"
+          />
+        </div>
+
+        {/* Friction slider */}
+        <div style={{ marginBottom: 10 }}>
+          <div style={row}>
+            <span>Friction</span>
+            <span style={val}>{environment.friction.toFixed(2)}</span>
+          </div>
+          <input
+            type="range" min={0} max={1} step={0.01}
+            value={environment.friction}
+            onChange={e => onEnvChange({ ...environment, friction: parseFloat(e.target.value) })}
+            style={{ width: '100%', accentColor: '#2563EB' }}
+          />
+        </div>
+
+        {/* Restitution slider */}
+        <div>
+          <div style={row}>
+            <span>Restitution (bounciness)</span>
+            <span style={val}>{environment.restitution.toFixed(2)}</span>
+          </div>
+          <input
+            type="range" min={0} max={1} step={0.01}
+            value={environment.restitution}
+            onChange={e => onEnvChange({ ...environment, restitution: parseFloat(e.target.value) })}
+            style={{ width: '100%', accentColor: '#2563EB' }}
+          />
+        </div>
+      </section>
+
+      {/* ── Appearance ─────────────────────────────────────────────────────── */}
+      <section style={card}>
+        <h3 style={sectionHdr}>Appearance</h3>
+        <div style={row}>
+          <label htmlFor="s-darkmode" style={{ fontSize: 13, color: textPrimary, cursor: 'pointer' }}>
+            Dark mode
+          </label>
+          <Toggle
+            id="s-darkmode"
+            checked={isDark}
+            onChange={toggleTheme}
+            size="sm"
+          />
+        </div>
+      </section>
+    </div>
+  )
+}
+
+// ── OtherTabContent orchestrator ──────────────────────────────────────────────
+
+interface OtherTabContentProps {
+  activeTab:      ActiveNavTab
+  world:          World
+  recorder:       DataRecorder
+  scale:          PhysicsScale
+  onScaleChange:  (s: PhysicsScale) => void
+  gravity:        number
+  onGravityChange:(v: number) => void
+  environment:    EnvironmentSettings
+  onEnvChange:    (e: EnvironmentSettings) => void
+  selectedBody:   number | null
+  onBodySelect:   (idx: number | null) => void
+  onBodyDelete:   (idx: number) => void
+  xKey:           SeriesKey
+  yKey:           SeriesKey
+  flipY:          boolean
+  onXKeyChange:   (k: SeriesKey) => void
+  onYKeyChange:   (k: SeriesKey) => void
+  onFlipY:        (v: boolean) => void
+}
+
+function OtherTabContent({
+  activeTab, world, recorder, scale, onScaleChange,
+  gravity, onGravityChange, environment, onEnvChange,
+  selectedBody, onBodySelect, onBodyDelete,
+  xKey, yKey, flipY, onXKeyChange, onYKeyChange, onFlipY,
+}: OtherTabContentProps) {
+  const { isDark } = useTheme()
+
+  const bg          = isDark ? 'var(--kl-bg-app)'     : '#F9FAFB'
+  const textPrimary = isDark ? '#F9FAFB'              : '#111827'
+
+  const hdr: CSSProperties = {
+    fontSize: 18, fontWeight: 700, color: textPrimary, marginBottom: 16,
   }
 
   if (activeTab === 'objects') {
     return (
-      <div style={panelStyle}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111827', marginBottom: 8 }}>Objects</h2>
-        <p style={{ color: '#6B7280', fontSize: 14 }}>
-          Object management panel — add, remove, and configure physics objects here.
-        </p>
+      <div style={{ flex: 1, background: bg, padding: 24, overflowY: 'auto' }}>
+        <h2 style={hdr}>Objects</h2>
+        <ObjectsTabPanel
+          world={world} scale={scale}
+          selectedBody={selectedBody}
+          onBodySelect={onBodySelect}
+          onBodyDelete={onBodyDelete}
+          isDark={isDark}
+        />
       </div>
     )
   }
+
   if (activeTab === 'forces') {
     return (
-      <div style={panelStyle}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111827', marginBottom: 8 }}>Forces</h2>
-        <div style={{ marginTop: 16 }}>
-          <ForcesDemoPanel />
-        </div>
+      <div style={{ flex: 1, background: bg, padding: 24, overflowY: 'auto' }}>
+        <h2 style={hdr}>Forces</h2>
+        <ForcesDemoPanel />
       </div>
     )
   }
+
   if (activeTab === 'graphs') {
     return (
-      <div style={panelStyle}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111827', marginBottom: 8 }}>Graphs</h2>
-        <p style={{ color: '#6B7280', fontSize: 14 }}>
-          Extended graph analysis — multiple series, export, and layout options.
-        </p>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: bg }}>
+        <div style={{ padding: '12px 16px 0', flexShrink: 0 }}>
+          <h2 style={hdr}>Graphs</h2>
+        </div>
+        <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
+          <GraphPanel
+            recorder={recorder} scale={scale}
+            xKey={xKey} yKey={yKey} flipY={flipY}
+            onXKeyChange={onXKeyChange} onYKeyChange={onYKeyChange} onFlipY={onFlipY}
+            style={{ flex: 1 }}
+          />
+        </div>
       </div>
     )
   }
+
   if (activeTab === 'data') {
     return (
-      <div style={panelStyle}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111827', marginBottom: 8 }}>Data Monitor</h2>
-        <p style={{ color: '#6B7280', fontSize: 14 }}>
-          Full data monitor with export, filtering, and historical playback.
-        </p>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: bg }}>
+        <div style={{ padding: '12px 16px 0', flexShrink: 0 }}>
+          <h2 style={hdr}>Data Monitor</h2>
+        </div>
+        <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
+          <DataMonitor
+            world={world} recorder={recorder} scale={scale}
+            style={{ flex: 1, borderRight: 'none' }}
+          />
+        </div>
       </div>
     )
   }
+
   if (activeTab === 'settings') {
     return (
-      <div style={panelStyle}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111827', marginBottom: 8 }}>Settings</h2>
-        <div style={{ maxWidth: 500, display: 'flex', flexDirection: 'column', gap: 20, marginTop: 16 }}>
-          <section aria-label="Scale settings">
-            <h3 style={{ fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>
-              Unit Scale
-            </h3>
-            {/* ScaleControl rendered by parent and injected via headerControls slot */}
-            <p style={{ fontSize: 13, color: '#9CA3AF' }}>Scale control is available in the simulation tab toolbar.</p>
-          </section>
-          <section aria-label="Spring Lab">
-            <h3 style={{ fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>
-              Spring Lab (Day 9)
-            </h3>
-            <Day9Panel />
-          </section>
-          <section aria-label="Physics Lab">
-            <h3 style={{ fontSize: 13, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>
-              Physics Lab (Day 10)
-            </h3>
-            <Day10Panel />
-          </section>
-        </div>
+      <div style={{ flex: 1, background: bg, padding: 24, overflowY: 'auto' }}>
+        <h2 style={hdr}>Settings</h2>
+        <SettingsTabPanel
+          scale={scale} onScaleChange={onScaleChange}
+          gravity={gravity} onGravityChange={onGravityChange}
+          environment={environment} onEnvChange={onEnvChange}
+          isDark={isDark}
+        />
       </div>
     )
   }
@@ -449,7 +748,7 @@ export function KinLabShell({
           flexDirection: 'column',
           height:        '100vh',
           overflow:      'hidden',
-          background:    '#FFFFFF',
+          background:    'var(--kl-bg-app)',
           fontFamily:    '"Inter", system-ui, -apple-system, sans-serif',
         }}
       >
@@ -526,8 +825,8 @@ export function KinLabShell({
                 {/* Scale control toolbar strip */}
                 <div style={{
                   padding:      '6px 12px',
-                  background:   '#FFFFFF',
-                  borderBottom: '1px solid #F3F4F6',
+                  background:   'var(--kl-bg-app)',
+                  borderBottom: '1px solid var(--kl-border)',
                   display:      'flex',
                   alignItems:   'center',
                   gap:          12,
@@ -576,7 +875,22 @@ export function KinLabShell({
 
             {/* Other nav tab content */}
             {!isSimulation && (
-              <OtherTabContent activeTab={activeNavTab} />
+              <OtherTabContent
+                activeTab={activeNavTab}
+                world={world}
+                recorder={recorder}
+                scale={scale}
+                onScaleChange={onScaleChange}
+                gravity={gravity}
+                onGravityChange={onGravityChange}
+                environment={environment}
+                onEnvChange={setEnvironment}
+                selectedBody={selectedBody}
+                onBodySelect={setSelectedBody}
+                onBodyDelete={handleBodyDelete}
+                xKey={xKey} yKey={yKey} flipY={flipY}
+                onXKeyChange={setXKey} onYKeyChange={setYKey} onFlipY={setFlipY}
+              />
             )}
           </div>
 
